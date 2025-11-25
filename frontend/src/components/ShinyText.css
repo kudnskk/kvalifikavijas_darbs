@@ -1,0 +1,45 @@
+.shiny-text {
+  color: transparent; /* Make base color transparent to see gradient */
+  background: linear-gradient(
+    120deg,
+    rgba(255, 255, 255, 0.7) 40%,
+    rgba(255, 255, 255, 1) 50%,
+    rgba(255, 255, 255, 0.7) 60%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent; /* Important for the effect */
+  display: inline-block;
+  animation: shine 5s linear infinite;
+  font-size: 20px;
+  font-weight: 600; 
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.shiny-text:hover {
+  background: linear-gradient(
+    120deg,
+    rgba(255, 0, 0, 0.7) 40%,
+    rgba(255, 0, 0, 1) 50%,
+    rgba(255, 0, 0, 0.7) 60%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+@keyframes shine {
+  0% {
+    background-position: 100%;
+  }
+  100% {
+    background-position: -100%;
+  }
+}
+
+.shiny-text.disabled {
+  animation: none;
+}
