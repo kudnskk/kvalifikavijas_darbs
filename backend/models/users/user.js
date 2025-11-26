@@ -7,33 +7,36 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: [true, "please provide email"],
       minlength: 1,
-      maxlength: 200,
       lowercase: true,
       trim: true,
     },
-    name: {
+    user_name: {
       type: String,
       minlength: 1,
-      maxlength: 200,
-      trim: true,
-    },
-    surname: {
-      type: String,
-      minlength: 1,
-      maxlength: 200,
+      maxlength: 20,
       trim: true,
     },
     password: {
       type: String,
-      minlength: 6,
       required: true,
       trim: true,
     },
-    profile_img: {
+    user_type: {
       type: String,
-      default: "/avatarDefault.jpg",
-      trim: true,
+      enum: ["user", "admin"],
+      required: true,
+      default: "user",
     },
+    is_blocked: {
+      type: Boolean,
+      default: false,
+    },
+    is_email_verified: {
+      type: Boolean,
+      default: false,
+    },
+    password_reset_token: String,
+    password_reset_expires: Date,
   },
   {
     timestamps: true,

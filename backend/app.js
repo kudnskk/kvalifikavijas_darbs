@@ -7,57 +7,53 @@ const morgan = require("morgan");
 const dotenv = require("dotenv");
 const multer = require("multer");
 const http = require("http");
+const fs = require("fs");
+const path = require("path");
 dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
-
-app.use(function (req, res, next) {
-  res.header("Access-Control-Allow-Origin", "*"); 
-  res.header(
-    "Access-Control-Allow-Headers",
-    "Origin, X-Requested-With, Content-Type, Accept",
-  );
-  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-  res.header("Access-Control-Expose-Headers", "Content-Disposition");
-  next();
-});
-
+//heasers security
 app.use(cors());
 app.use(helmet());
+// Log requests
 app.use((req, res, next) => {
-  const contentType = req.headers['content-type'];
-  console.log(`[${req.method}] ${req.originalUrl} - Content-Type: ${contentType}`);
+  const contentType = req.headers["content-type"];
+  console.log(
+    `[${req.method}] ${req.originalUrl} - Content-Type: ${contentType}`,
+  );
   next();
 });
+//parsing requests
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(compression());
-//const upload = multer({ dest: "uploads/" });
 
-// app.post("/upload", upload.single("file"), (req, res) => {
-//   console.log(req.file); // Your uploaded PDF
-// });
+// // Ensure uploads directory exists
+// const uploadsDir = path.join(__dirname, "uploads");
+// if (!fs.existsSync(uploadsDir)) {
+//   fs.mkdirSync(uploadsDir, { recursive: true });
+// }
 
 // import routes
-const pdf_text_replacer = require("./routers/pdf_text_replacer/pdf_text_replacer");
 const auth = require("./routers/auth/auth");
-// morgan routes view
+const fileRouter = require("./routers/files/fileRouter");
+// morgan routes view log
 if (app.get("env") === "development") {
   app.use(morgan("tiny"));
   console.log("Morgan connected..");
 }
 
 // Database connection
-  const db = `${process.env.DB_STRING}`;
-  mongoose
-    .connect(db)
-    .then(() => console.log("Database connected successfully"))
-    .catch((err) => console.log("Data base connection error:", err.message));
-    
+const db = `${process.env.DB_STRING}`;
+mongoose
+  .connect(db)
+  .then(() => console.log("Database connected successfully"))
+  .catch((err) => console.log("Data base connection error:", err.message));
+
 // use routes
-app.use("/api/pdf", pdf_text_replacer);
-app.use("/api/auth", auth);
+app.use("/api/auth", auth); // Public route (login) and protected route (verify)
+app.use("/api/files", fileRouter); // Protected routes - file upload/management
 
 // server welcome response
 app.get("/", (req, res) => {
@@ -85,7 +81,8 @@ app.use((error, req, res, next) => {
 
     if (error.code === "LIMIT_UNEXPECTED_FILE") {
       return res.status(400).json({
-        message: "File must be a PDF",
+        message:
+          "Invalid file type. Only PDF, TXT, DOC, and DOCX files are allowed.",
       });
     }
   }
@@ -96,7 +93,6 @@ app.use((error, req, res, next) => {
     error: error.message,
   });
 });
-
 
 // server listening
 const port = process.env.PORT || 5100;

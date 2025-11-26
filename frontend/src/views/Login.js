@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   Box,
   Button,
@@ -13,14 +13,14 @@ import {
   useToast,
   InputGroup,
   InputRightElement,
-  IconButton
-} from '@chakra-ui/react';
+  IconButton,
+} from "@chakra-ui/react";
 
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from "react-router-dom";
 
 const Login = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
@@ -33,23 +33,23 @@ const Login = () => {
     try {
       // TODO: Replace with actual API call
       // const response = await login(email, password);
-      
+
       // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
       toast({
-        title: 'Login successful',
-        status: 'success',
+        title: "Login successful",
+        status: "success",
         duration: 3000,
         isClosable: true,
       });
-      
-      navigate('/dashboard');
+
+      navigate("/dashboard");
     } catch (error) {
       toast({
-        title: 'Login failed',
-        description: 'Invalid email or password',
-        status: 'error',
+        title: "Login failed",
+        description: "Invalid email or password",
+        status: "error",
         duration: 3000,
         isClosable: true,
       });
@@ -60,15 +60,12 @@ const Login = () => {
 
   return (
     <Container maxW="md" py={16}>
-      <Box
-        bg="white"
-        p={8}
-        borderRadius="lg"
-        boxShadow="lg"
-      >
+      <Box bg="white" p={8} borderRadius="lg" boxShadow="lg">
         <VStack spacing={6} align="stretch">
           <Box textAlign="center">
-            <Heading size="xl" mb={2}>Welcome Back</Heading>
+            <Heading size="xl" mb={2}>
+              Welcome Back
+            </Heading>
             <Text color="gray.600">Sign in to your account</Text>
           </Box>
 
@@ -88,7 +85,7 @@ const Login = () => {
                 <FormLabel>Password</FormLabel>
                 <InputGroup>
                   <Input
-                    type={showPassword ? 'text' : 'password'}
+                    type={showPassword ? "text" : "password"}
                     placeholder="Enter your password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -96,17 +93,20 @@ const Login = () => {
                   <InputRightElement>
                     <IconButton
                       variant="ghost"
-                     // icon={showPassword ? <ViewOffIcon /> : <ViewIcon />}
+                      // icon={showPassword ? <ViewOffIcon /> : <ViewIcon />}
                       onClick={() => setShowPassword(!showPassword)}
-                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                      aria-label={
+                        showPassword ? "Hide password" : "Show password"
+                      }
                     />
                   </InputRightElement>
                 </InputGroup>
               </FormControl>
 
               <Button
+                color="white"
                 type="submit"
-                colorScheme="teal"
+                bg="#0F172A"
                 width="full"
                 size="lg"
                 isLoading={isLoading}
@@ -117,8 +117,8 @@ const Login = () => {
           </form>
 
           <Text textAlign="center" color="gray.600">
-            Don't have an account?{' '}
-            <Link color="teal.500" onClick={() => navigate('/register')}>
+            Don't have an account?{" "}
+            <Link color="teal.500" onClick={() => navigate("/register")}>
               Register here
             </Link>
           </Text>

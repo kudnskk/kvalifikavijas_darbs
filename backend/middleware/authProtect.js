@@ -1,45 +1,39 @@
-const jwt = require('jsonwebtoken');
-const User = require('../models/users/user');
+const jwt = require("jsonwebtoken");
+const User = require("../models/users/user");
 
 exports.protect = async (req, res, next) => {
-    try {
-        let token;
-        const { authorization } = req.headers;
+  try {
+    let token;
+    const { authorization } = req.headers;
 
-        if (authorization && authorization.startsWith('Bearer')) {
-            token = authorization.split(' ')[1];
-
-        } else {
-            res.status(401).json({
-                status: 'Authentication failed!',
-                // eslint-disable-next-line no-undef
-                error: e.message
-            })
-        };
-
-
-        const decoded = await jwt.verify(token, process.env.JWT_SECRET);
-
-        if (decoded?.id) {
-            const user = await User.findOne({ _id: decoded.id });
-            // eslint-disable-next-line
-            if (!!user) {
-                res.locals.user = { id: user._id, role: user.role, email: user.email };
-                next();
-
-            } else {
-                res.status(404).json({
-                    status: 'Authentication failed! User not found',
-                })
-            }
-        }
-
-
-    } catch (error) {
-        res.status(401).json({
-            message: 'Authentication failed!',
-            status: false,
-            error
-        })
+    if (authorization && authorization.startsWith("Bearer")) {
+      token = authorization.split(" ")[1];
+    } else {
+      return res.status(401).json({
+        status: false,
+        message: "Authentication failed! No token provided",
+      });
     }
-}
+
+    const decoded = await jwt.verify(token, process.env.JWT_SECRET);
+
+    if (decoded?.id) {
+      const user = await User.findOne({ _id: decoded.id });
+      // eslint-disable-next-line
+      if (!!user) {
+        res.locals.user = { id: user._id, role: user.role, email: user.email };
+        next();
+      } else {
+        res.status(404).json({
+          status: "Authentication failed! User not found",
+        });
+      }
+    }
+  } catch (error) {
+    res.status(401).json({
+      message: "Authentication failed!",
+      status: false,
+      error,
+    });
+  }
+};
