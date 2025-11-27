@@ -1,4 +1,4 @@
-import React, { useState, setTimeout } from "react";
+import React, { useState } from "react";
 import {
   Box,
   Button,
@@ -14,6 +14,7 @@ import {
   InputGroup,
   InputRightElement,
   IconButton,
+  FormHelperText,
 } from "@chakra-ui/react";
 //import { ViewIcon, ViewOffIcon } from '@chakra-ui/icons';
 import { useNavigate } from "react-router-dom";
@@ -27,6 +28,7 @@ const Register = () => {
     password: "",
     confirmPassword: "",
   });
+  const [errorMessage, setErrorMessage] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -42,26 +44,45 @@ const Register = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setErrorMessage("");
 
-    if (formData.password !== formData.confirmPassword) {
-      toast({
-        title: "Passwords do not match",
-        description: "Please make sure your passwords match",
-        status: "error",
-        duration: 3000,
-        isClosable: true,
-      });
+    // Check if all fields are filled
+    if (
+      !formData.password ||
+      !formData.confirmPassword ||
+      !formData.email ||
+      !formData.user_name
+    ) {
+      setErrorMessage("Not all required input fields are filled in!");
       return;
     }
 
-    if (formData.password.length < 5) {
-      toast({
-        title: "Password too short",
-        description: "Password must be at least 5 characters",
-        status: "error",
-        duration: 3000,
-        isClosable: true,
-      });
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      setErrorMessage("Email is not valid!");
+      return;
+    }
+
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/;
+    if (!passwordRegex.test(formData.password)) {
+      setErrorMessage(
+        "The password must contain at least one uppercase letter, one lowercase letter, and one digit!"
+      );
+      return;
+    }
+
+    if (formData.password.length < 5 || formData.password.length > 20) {
+      setErrorMessage("Password must be between 5-20 characters!");
+      return;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      setErrorMessage("The passwords do not match!");
+      return;
+    }
+
+    if (formData.user_name.length > 20) {
+      setErrorMessage("Username must be less than 20 characters!");
       return;
     }
 
@@ -86,18 +107,24 @@ const Register = () => {
           navigate("/dashboard");
         }, 1200);
       } else {
+        const errorMsg =
+          response.message || "Something went wrong, please try again";
+        setErrorMessage(errorMsg);
         toast({
           title: "Registration failed",
-          description: "Somethign went wrong, please try again",
+          description: errorMsg,
           status: "error",
           duration: 3000,
           isClosable: true,
         });
       }
     } catch (error) {
+      console.log("Registration error:", error);
+      const errorMsg = error?.message || error?.msg || "Something went wrong";
+
       toast({
         title: "Registration failed",
-        description: error.message || "Something went wrong",
+        description: errorMsg,
         status: "error",
         duration: 3000,
         isClosable: true,
@@ -108,9 +135,9 @@ const Register = () => {
   };
 
   return (
-    <Container maxW="md" py={16}>
+    <Container maxW="md">
       <Box bg="white" p={8} borderRadius="lg" boxShadow="lg">
-        <VStack spacing={6} align="stretch">
+        <VStack spacing={3}>
           <Box textAlign="center">
             <Heading size="xl" mb={2}>
               Create Account
@@ -129,6 +156,9 @@ const Register = () => {
                   value={formData.user_name}
                   onChange={handleChange}
                 />
+                <FormHelperText>
+                  Must be less than 20 characters.
+                </FormHelperText>
               </FormControl>
 
               <FormControl isRequired>
@@ -140,6 +170,7 @@ const Register = () => {
                   value={formData.email}
                   onChange={handleChange}
                 />
+                <FormHelperText>Must be valid email.</FormHelperText>
               </FormControl>
 
               <FormControl isRequired>
@@ -163,6 +194,10 @@ const Register = () => {
                     />
                   </InputRightElement>
                 </InputGroup>
+                <FormHelperText>
+                  Must be between 5-20 characters, contain at least one number,
+                  upper and lower case letter.
+                </FormHelperText>
               </FormControl>
 
               <FormControl isRequired>
@@ -189,11 +224,10 @@ const Register = () => {
                   </InputRightElement>
                 </InputGroup>
               </FormControl>
-
+              {errorMessage && <Text color="red.500">{errorMessage}</Text>}
               <Button
-                color="white"
                 type="submit"
-                bg="#0F172A"
+                colorScheme="blue"
                 width="full"
                 size="lg"
                 isLoading={isLoading}
@@ -205,7 +239,7 @@ const Register = () => {
 
           <Text textAlign="center" color="gray.600">
             Already have an account?{" "}
-            <Link color="teal.500" onClick={() => navigate("/login")}>
+            <Link color="red.500" onClick={() => navigate("/login")}>
               Sign in here
             </Link>
           </Text>

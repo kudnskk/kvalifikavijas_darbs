@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 import {
   Box,
   Container,
@@ -10,107 +10,206 @@ import {
   Icon,
   SimpleGrid,
   Card,
-  CardBody
-} from '@chakra-ui/react';
-import { FiBook, FiUsers, FiTrendingUp, FiZap } from 'react-icons/fi';
-import { useNavigate } from 'react-router-dom';
+  CardBody,
+  Stat,
+  StatLabel,
+  StatNumber,
+  StatHelpText,
+  StatArrow,
+  HStack,
+  VStack,
+} from "@chakra-ui/react";
+import {
+  FiBook,
+  FiUsers,
+  FiTrendingUp,
+  FiZap,
+  FiPlus,
+  FiFolder,
+} from "react-icons/fi";
+import { useNavigate } from "react-router-dom";
 
-const Home = () => {
+const Dashboard = () => {
   const navigate = useNavigate();
 
+  // Mock user stats - replace with real data from backend
+  const userStats = {
+    totalLessons: 24,
+    completedLessons: 18,
+    inProgressLessons: 6,
+    totalCategories: 4,
+    studyTime: "45h 30m",
+    weeklyProgress: 12,
+  };
+
+  const handleCreateLesson = () => {
+    // Navigate to create lesson page or open modal
+    console.log("Create new lesson");
+  };
+
+  const handleCreateCategory = () => {
+    // Navigate to create category page or open modal
+    console.log("Create new category");
+  };
+
   return (
-    <Box>
-      {/* Hero Section */}
-      <Box bg="teal.500" color="white" py={20}>
-        <Container maxW="container.xl">
-          <Stack spacing={6} maxW="2xl">
-            <Heading size="2xl">
-              AI-Powered Learning Assistant
+    <Box color="white">
+      <Container maxW="container.xl" py={8}>
+        {/* Header with Actions */}
+        <Flex justify="space-between" align="center" mb={8}>
+          <Box>
+            <Heading size="xl" mb={2}>
+              Dashboard
             </Heading>
-            <Text fontSize="xl">
-              Transform your learning experience with personalized AI assistance, 
-              smart recommendations, and adaptive learning paths.
+            <Text color="gray.400">
+              Welcome back! Here's your learning overview
             </Text>
-            <Stack direction={{ base: 'column', sm: 'row' }} spacing={4}>
-              <Button
-                size="lg"
-                colorScheme="white"
-                variant="solid"
-                onClick={() => navigate('/register')}
-              >
-                Get Started
-              </Button>
-              <Button
-                size="lg"
-                colorScheme="whiteAlpha"
-                variant="outline"
-                onClick={() => navigate('/login')}
-              >
-                Sign In
-              </Button>
-            </Stack>
-          </Stack>
-        </Container>
-      </Box>
+          </Box>
+          <HStack spacing={4}>
+            <Button
+              leftIcon={<FiPlus />}
+              colorScheme="blue"
+              onClick={handleCreateLesson}
+            >
+              New Lesson
+            </Button>
+            <Button
+              leftIcon={<FiFolder />}
+              colorScheme="purple"
+              onClick={handleCreateCategory}
+            >
+              New Category
+            </Button>
+          </HStack>
+        </Flex>
 
-      {/* Features Section */}
-      <Container maxW="container.xl" py={16}>
-        <Heading textAlign="center" mb={12}>
-          Why Choose AI Learning Assistant?
-        </Heading>
-
-        <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={8}>
-          <Card>
-            <CardBody textAlign="center">
-              <Flex justify="center" mb={4}>
-                <Icon as={FiBook} boxSize={12} color="teal.500" />
-              </Flex>
-              <Heading size="md" mb={2}>Smart Courses</Heading>
-              <Text color="gray.600">
-                Access a wide range of courses tailored to your learning style
-              </Text>
+        {/* Stats Grid */}
+        <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={6} mb={8}>
+          <Card bg="#1E293B" borderColor="#334155" borderWidth="1px">
+            <CardBody>
+              <Stat>
+                <StatLabel color="gray.400">Total Lessons</StatLabel>
+                <StatNumber color="white" fontSize="3xl">
+                  {userStats.totalLessons}
+                </StatNumber>
+                <StatHelpText color="gray.500">
+                  {userStats.completedLessons} completed
+                </StatHelpText>
+              </Stat>
             </CardBody>
           </Card>
 
-          <Card>
-            <CardBody textAlign="center">
-              <Flex justify="center" mb={4}>
-                <Icon as={FiZap} boxSize={12} color="purple.500" />
-              </Flex>
-              <Heading size="md" mb={2}>AI-Powered</Heading>
-              <Text color="gray.600">
-                Get personalized recommendations and adaptive learning paths
-              </Text>
+          <Card bg="#1E293B" borderColor="#334155" borderWidth="1px">
+            <CardBody>
+              <Stat>
+                <StatLabel color="gray.400">In Progress</StatLabel>
+                <StatNumber color="white" fontSize="3xl">
+                  {userStats.inProgressLessons}
+                </StatNumber>
+                <StatHelpText color="green.400">
+                  <StatArrow type="increase" />
+                  {userStats.weeklyProgress}% this week
+                </StatHelpText>
+              </Stat>
             </CardBody>
           </Card>
 
-          <Card>
-            <CardBody textAlign="center">
-              <Flex justify="center" mb={4}>
-                <Icon as={FiTrendingUp} boxSize={12} color="green.500" />
-              </Flex>
-              <Heading size="md" mb={2}>Track Progress</Heading>
-              <Text color="gray.600">
-                Monitor your learning journey with detailed analytics
-              </Text>
+          <Card bg="#1E293B" borderColor="#334155" borderWidth="1px">
+            <CardBody>
+              <Stat>
+                <StatLabel color="gray.400">Categories</StatLabel>
+                <StatNumber color="white" fontSize="3xl">
+                  {userStats.totalCategories}
+                </StatNumber>
+                <StatHelpText color="gray.500">
+                  Active learning paths
+                </StatHelpText>
+              </Stat>
             </CardBody>
           </Card>
 
-          <Card>
-            <CardBody textAlign="center">
-              <Flex justify="center" mb={4}>
-                <Icon as={FiUsers} boxSize={12} color="orange.500" />
-              </Flex>
-              <Heading size="md" mb={2}>Community</Heading>
-              <Text color="gray.600">
-                Learn together with a supportive community of learners
-              </Text>
+          <Card bg="#1E293B" borderColor="#334155" borderWidth="1px">
+            <CardBody>
+              <Stat>
+                <StatLabel color="gray.400">Study Time</StatLabel>
+                <StatNumber color="white" fontSize="3xl">
+                  {userStats.studyTime}
+                </StatNumber>
+                <StatHelpText color="gray.500">
+                  Total time invested
+                </StatHelpText>
+              </Stat>
             </CardBody>
           </Card>
         </SimpleGrid>
+
+        {/* Recent Activity Section */}
+        <Box>
+          <Heading size="lg" mb={6}>
+            Recent Activity
+          </Heading>
+          <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6}>
+            <Card bg="#1E293B" borderColor="#334155" borderWidth="1px">
+              <CardBody>
+                <VStack align="start" spacing={4}>
+                  <Flex align="center">
+                    <Icon as={FiBook} boxSize={6} color="blue.400" mr={3} />
+                    <Box>
+                      <Text fontWeight="bold" color="white">
+                        Continue Learning
+                      </Text>
+                      <Text fontSize="sm" color="gray.400">
+                        Pick up where you left off
+                      </Text>
+                    </Box>
+                  </Flex>
+                  <Button
+                    colorScheme="blue"
+                    variant="outline"
+                    size="sm"
+                    w="full"
+                  >
+                    View Progress
+                  </Button>
+                </VStack>
+              </CardBody>
+            </Card>
+
+            <Card bg="#1E293B" borderColor="#334155" borderWidth="1px">
+              <CardBody>
+                <VStack align="start" spacing={4}>
+                  <Flex align="center">
+                    <Icon
+                      as={FiTrendingUp}
+                      boxSize={6}
+                      color="green.400"
+                      mr={3}
+                    />
+                    <Box>
+                      <Text fontWeight="bold" color="white">
+                        Learning Streak
+                      </Text>
+                      <Text fontSize="sm" color="gray.400">
+                        7 days in a row!
+                      </Text>
+                    </Box>
+                  </Flex>
+                  <Button
+                    colorScheme="green"
+                    variant="outline"
+                    size="sm"
+                    w="full"
+                  >
+                    View Statistics
+                  </Button>
+                </VStack>
+              </CardBody>
+            </Card>
+          </SimpleGrid>
+        </Box>
       </Container>
     </Box>
   );
 };
 
-export default Home;
+export default Dashboard;

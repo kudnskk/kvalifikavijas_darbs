@@ -14,41 +14,64 @@ import {
   InputGroup,
   InputRightElement,
   IconButton,
+  Checkbox,
+  Flex,
 } from "@chakra-ui/react";
 
-import { useNavigate } from "react-router-dom";
-
+import { Form, useNavigate } from "react-router-dom";
+import { login } from "../api/authApi";
 const Login = () => {
+  const remember_me = localStorage.getItem("rememberMe") === "true";
+  const [errorMessage, setErrorMessage] = useState("");
   const [email, setEmail] = useState("");
+  const [rememberMe, setRememberMe] = useState(remember_me);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const toast = useToast();
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
+    if (!email.trim() || !password.trim()) {
+      setErrorMessage("Not all required input fields are filled in!");
+      return;
+    }
+
     setIsLoading(true);
+    setErrorMessage("");
 
     try {
-      // TODO: Replace with actual API call
-      // const response = await login(email, password);
-
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      toast({
-        title: "Login successful",
-        status: "success",
-        duration: 3000,
-        isClosable: true,
+      const response = await login({
+        email: email.trim(),
+        password: password.trim(),
+        remember_me: rememberMe,
       });
 
-      navigate("/dashboard");
+      if (response.status) {
+        localStorage.setItem("sessionToken", response?.token);
+        if (rememberMe) {
+          localStorage.setItem("rememberMe", "true");
+        } else {
+          localStorage.removeItem("rememberMe");
+        }
+
+        toast({
+          title: "Login successful",
+          description: "Welcome to AI Learning Assistant!",
+          status: "success",
+          duration: 1000,
+          isClosable: true,
+        });
+        setTimeout(() => {
+          navigate("/dashboard");
+        }, 1200);
+      } else {
+        setErrorMessage(response.message || "Login failed");
+      }
     } catch (error) {
       toast({
         title: "Login failed",
-        description: "Invalid email or password",
+        description: error.message,
         status: "error",
         duration: 3000,
         isClosable: true,
@@ -61,7 +84,7 @@ const Login = () => {
   return (
     <Container maxW="md" py={16}>
       <Box bg="white" p={8} borderRadius="lg" boxShadow="lg">
-        <VStack spacing={6} align="stretch">
+        <VStack spacing={6}>
           <Box textAlign="center">
             <Heading size="xl" mb={2}>
               Welcome Back
@@ -103,12 +126,22 @@ const Login = () => {
                 </InputGroup>
               </FormControl>
 
+              {errorMessage && <Text color="red.500">{errorMessage}</Text>}
+
+              <Checkbox
+                colorScheme="blue"
+                isChecked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+              >
+                Remember me
+              </Checkbox>
+
               <Button
-                color="white"
                 type="submit"
-                bg="#0F172A"
+                colorScheme="blue"
                 width="full"
                 size="lg"
+                onClick={handleSubmit}
                 isLoading={isLoading}
               >
                 Sign In
@@ -118,7 +151,7 @@ const Login = () => {
 
           <Text textAlign="center" color="gray.600">
             Don't have an account?{" "}
-            <Link color="teal.500" onClick={() => navigate("/register")}>
+            <Link color="red.500" onClick={() => navigate("/register")}>
               Register here
             </Link>
           </Text>

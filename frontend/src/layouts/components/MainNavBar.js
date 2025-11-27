@@ -6,9 +6,16 @@ const MainNavBar = () => {
   const navigate = useNavigate();
 
   return (
-    <Box bg="#0F172A" px={8} pt={4}>
+    <Box
+      bg="#0F172A"
+      px={8}
+      py={4}
+      borderBottom="1px solid"
+      borderColor="#334155"
+      boxShadow="md"
+    >
       <Flex align="center">
-        <Box onClick={() => navigate("/")} cursor="pointer">
+        <Box onClick={() => navigate("/dashboard")} cursor="pointer">
           <ShinyText text="AI Learning Assistant" speed={3} />
         </Box>
         <Spacer />
@@ -26,7 +33,7 @@ const MainNavBar = () => {
           size="lg"
           onClick={() => navigate("/login")}
         >
-          Login
+          Profile
         </Text>
         <Text
           cursor="pointer"
@@ -39,7 +46,7 @@ const MainNavBar = () => {
           color="white"
           onClick={() => navigate("/register")}
         >
-          Register
+          Logout
         </Text>
       </Flex>
     </Box>

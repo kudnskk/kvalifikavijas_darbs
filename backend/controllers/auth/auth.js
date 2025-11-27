@@ -31,9 +31,16 @@ exports.login = async (req, res) => {
       email: email,
     });
     if (!user)
-      return res
-        .status(404)
-        .json({ message: "User not found!", status: false });
+      return res.status(401).json({
+        message:
+          "The entered password or email is incorrect. Please try again!",
+        status: false,
+      });
+    if (user.is_blocked)
+      return res.status(401).json({
+        message: "You are currently not allowed to sign in to the system!",
+        status: false,
+      });
 
     const passwordMatch = await bcrypt.compare(password, user.password);
 
@@ -48,7 +55,7 @@ exports.login = async (req, res) => {
     } else {
       return res.status(401).send({
         status: false,
-        msg: "Invalid login or password",
+        msg: "The entered password or email is incorrect. Please try again!",
       });
     }
   } catch {
@@ -67,15 +74,15 @@ exports.register = async (req, res) => {
     if (!email || !password || !user_name) {
       return res.status(400).json({
         status: false,
-        message: "Username,Email and password are required",
+        message: "Username, email and password are required",
       });
     }
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(409).json({
+      return res.status(400).json({
         status: false,
-        message: "User with this email already exists",
+        message: "A user with this e-mail address is already registered! ",
       });
     }
     if (password.length < 5) {
@@ -85,10 +92,8 @@ exports.register = async (req, res) => {
       });
     }
 
-    //hash password
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
-
     //new usr creation
     const newUser = new User({
       email,
