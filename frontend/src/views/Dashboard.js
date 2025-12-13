@@ -32,7 +32,6 @@ import { useNavigate } from "react-router-dom";
 const Dashboard = () => {
   const navigate = useNavigate();
 
-  // Mock user stats - replace with real data from backend
   const userStats = {
     totalLessons: 24,
     completedLessons: 18,
@@ -58,27 +57,36 @@ const Dashboard = () => {
         {/* Header with Actions */}
         <Flex justify="space-between" align="center" mb={8}>
           <Box>
-            <Heading size="xl" mb={2}>
-              Dashboard
-            </Heading>
+            <Heading size="lg">Dashboard</Heading>
             <Text color="gray.400">
               Welcome back! Here's your learning overview
             </Text>
           </Box>
           <HStack spacing={4}>
             <Button
-              leftIcon={<FiPlus />}
-              colorScheme="blue"
+              variant="outline"
+              colorScheme="red"
               onClick={handleCreateLesson}
+              _hover={{
+                transform: "scale(1.02)",
+                boxShadow: "md",
+              }}
+              transition="all 0.2s ease-in-out"
             >
-              New Lesson
+              + New Lesson
             </Button>
+
             <Button
-              leftIcon={<FiFolder />}
-              colorScheme="purple"
+              variant="outline"
+              colorScheme="blue"
               onClick={handleCreateCategory}
+              _hover={{
+                transform: "scale(1.02)",
+                boxShadow: "md",
+              }}
+              transition="all 0.2s ease-in-out"
             >
-              New Category
+              + New Category
             </Button>
           </HStack>
         </Flex>
@@ -142,71 +150,6 @@ const Dashboard = () => {
             </CardBody>
           </Card>
         </SimpleGrid>
-
-        {/* Recent Activity Section */}
-        <Box>
-          <Heading size="lg" mb={6}>
-            Recent Activity
-          </Heading>
-          <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6}>
-            <Card bg="#1E293B" borderColor="#334155" borderWidth="1px">
-              <CardBody>
-                <VStack align="start" spacing={4}>
-                  <Flex align="center">
-                    <Icon as={FiBook} boxSize={6} color="blue.400" mr={3} />
-                    <Box>
-                      <Text fontWeight="bold" color="white">
-                        Continue Learning
-                      </Text>
-                      <Text fontSize="sm" color="gray.400">
-                        Pick up where you left off
-                      </Text>
-                    </Box>
-                  </Flex>
-                  <Button
-                    colorScheme="blue"
-                    variant="outline"
-                    size="sm"
-                    w="full"
-                  >
-                    View Progress
-                  </Button>
-                </VStack>
-              </CardBody>
-            </Card>
-
-            <Card bg="#1E293B" borderColor="#334155" borderWidth="1px">
-              <CardBody>
-                <VStack align="start" spacing={4}>
-                  <Flex align="center">
-                    <Icon
-                      as={FiTrendingUp}
-                      boxSize={6}
-                      color="green.400"
-                      mr={3}
-                    />
-                    <Box>
-                      <Text fontWeight="bold" color="white">
-                        Learning Streak
-                      </Text>
-                      <Text fontSize="sm" color="gray.400">
-                        7 days in a row!
-                      </Text>
-                    </Box>
-                  </Flex>
-                  <Button
-                    colorScheme="green"
-                    variant="outline"
-                    size="sm"
-                    w="full"
-                  >
-                    View Statistics
-                  </Button>
-                </VStack>
-              </CardBody>
-            </Card>
-          </SimpleGrid>
-        </Box>
       </Container>
     </Box>
   );

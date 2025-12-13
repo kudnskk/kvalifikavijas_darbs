@@ -19,10 +19,12 @@ const activityAttemptAnswerSchema = new mongoose.Schema(
       ref: "Activity_Attempt",
       required: true,
     },
-    activity_answer_id: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Activity_Answer",
-    },
+    activity_answer_id: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Activity_Answer",
+      },
+    ],
     activity_question_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Activity_Question",

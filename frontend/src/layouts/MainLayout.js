@@ -1,8 +1,10 @@
 import React from "react";
-import { Box, Flex, VStack, Text, Heading } from "@chakra-ui/react";
+import { Box, VStack, Text, Heading } from "@chakra-ui/react";
 import MainNavBar from "./components/MainNavBar";
 
 const MainLayout = ({ children }) => {
+  const sidebarWidth = 275;
+
   // Mock data - replace with actual data from your backend
   const categories = [
     { id: 1, name: "Mathematics", lessonsCount: 12 },
@@ -33,98 +35,122 @@ const MainLayout = ({ children }) => {
   ];
 
   return (
-    <Box minH="100vh" bgColor="#0F172A">
-      <MainNavBar />
-      <Flex>
-        {/* Right Sidebar - Categories and Lessons */}
-        <Box
-          w="300px"
-          bg="#1E293B"
-          borderLeft="1px solid"
-          borderColor="#334155"
-          overflowY="auto"
-          maxH="calc(100vh - 80px)"
-          position="sticky"
-          top="80px"
-        >
-          <VStack spacing={6} p={6} align="stretch">
-            {/* Categories Section */}
-            <Box>
-              <Heading size="md" color="white" mb={4}>
-                Categories
-              </Heading>
-              <VStack spacing={3} align="stretch">
-                {categories.map((category) => (
-                  <Box
-                    key={category.id}
-                    p={4}
-                    bg="#334155"
-                    borderRadius="md"
-                    cursor="pointer"
-                    _hover={{
-                      bg: "#475569",
-                      transform: "translateX(-4px)",
-                      transition: "all 0.2s",
-                    }}
-                  >
-                    <Text color="white" fontWeight="bold">
-                      {category.name}
-                    </Text>
-                    <Text color="gray.400" fontSize="sm">
-                      {category.lessonsCount} lessons
-                    </Text>
-                  </Box>
-                ))}
-              </VStack>
-            </Box>
+    <Box bgColor="#0F172A" minH="100vh">
+      {/* Fixed Left Sidebar */}
+      <Box
+        position="fixed"
+        top="0"
+        left="0"
+        w={`${sidebarWidth}px`}
+        h="100vh"
+        bg="#1E293B"
+        borderRight="1px solid"
+        borderColor="#334155"
+        overflowY="auto"
+        css={{
+          "&::-webkit-scrollbar": {
+            width: "8px",
+          },
+          "&::-webkit-scrollbar-track": {
+            background: "#1E293B",
+          },
+          "&::-webkit-scrollbar-thumb": {
+            background: "#475569",
+            borderRadius: "4px",
+          },
+          "&::-webkit-scrollbar-thumb:hover": {
+            background: "#64748b",
+          },
+        }}
+      >
+        <VStack spacing={6} p={6} align="stretch">
+          {/* Categories Section */}
+          <Box>
+            <Heading size="md" color="white" mb={4}>
+              Categories
+            </Heading>
+            <VStack spacing={3} align="stretch">
+              {categories.map((category) => (
+                <Box
+                  key={category.id}
+                  p={4}
+                  bg="#334155"
+                  borderRadius="md"
+                  cursor="pointer"
+                  _hover={{
+                    bg: "#475569",
+                    transform: "translateX(4px)",
+                    transition: "all 0.2s",
+                  }}
+                >
+                  <Text color="white" fontWeight="bold">
+                    {category.name}
+                  </Text>
+                  <Text color="gray.400" fontSize="sm">
+                    {category.lessonsCount} lessons
+                  </Text>
+                </Box>
+              ))}
+            </VStack>
+          </Box>
 
-            {/* Lessons Section */}
-            <Box>
-              <Heading size="md" color="white" mb={4}>
-                Recent Lessons
-              </Heading>
-              <VStack spacing={3} align="stretch">
-                {lessons.map((lesson) => (
-                  <Box
-                    key={lesson.id}
-                    p={4}
-                    bg="#334155"
-                    borderRadius="md"
-                    cursor="pointer"
-                    _hover={{
-                      bg: "#475569",
-                      transform: "translateX(-4px)",
-                      transition: "all 0.2s",
-                    }}
-                  >
-                    <Text color="white" fontWeight="semibold" mb={1}>
-                      {lesson.title}
-                    </Text>
-                    <Text color="gray.400" fontSize="sm" mb={2}>
-                      {lesson.category}
-                    </Text>
-                    <Box bg="#1E293B" borderRadius="full" h="6px" w="100%">
-                      <Box
-                        bg="blue.500"
-                        h="100%"
-                        borderRadius="full"
-                        w={`${lesson.progress}%`}
-                      />
-                    </Box>
-                    <Text color="gray.400" fontSize="xs" mt={1}>
-                      {lesson.progress}% complete
-                    </Text>
+          {/* Lessons Section */}
+          <Box>
+            <Heading size="md" color="white" mb={4}>
+              Recent Lessons
+            </Heading>
+            <VStack spacing={3} align="stretch">
+              {lessons.map((lesson) => (
+                <Box
+                  key={lesson.id}
+                  p={4}
+                  bg="#334155"
+                  borderRadius="md"
+                  cursor="pointer"
+                  _hover={{
+                    bg: "#475569",
+                    transform: "translateX(4px)",
+                    transition: "all 0.2s",
+                  }}
+                >
+                  <Text color="white" fontWeight="semibold" mb={1}>
+                    {lesson.title}
+                  </Text>
+                  <Text color="gray.400" fontSize="sm" mb={2}>
+                    {lesson.category}
+                  </Text>
+                  <Box bg="#1E293B" borderRadius="full" h="6px" w="100%">
+                    <Box
+                      bg="blue.500"
+                      h="100%"
+                      borderRadius="full"
+                      w={`${lesson.progress}%`}
+                    />
                   </Box>
-                ))}
-              </VStack>
-            </Box>
-          </VStack>
-        </Box>
-        {/* Main Content Area */}
-        <Box flex="1" p={6}>
-          {children}
-        </Box>
-      </Flex>
+                  <Text color="gray.400" fontSize="xs" mt={1}>
+                    {lesson.progress}% complete
+                  </Text>
+                </Box>
+              ))}
+            </VStack>
+          </Box>
+        </VStack>
+      </Box>
+
+      {/* Main Content Area with Navbar */}
+      <Box
+        ml={`${sidebarWidth}px`}
+        w={{
+          base: "100%",
+          xl: `calc(100% - ${sidebarWidth}px)`,
+        }}
+      >
+        {/* Navbar */}
+        <MainNavBar />
+
+        {/* Main Content */}
+        <Box p={6}>{children}</Box>
+      </Box>
     </Box>
   );
 };
