@@ -16,6 +16,14 @@ const categorySchema = new mongoose.Schema(
       maxlength: 100,
       trim: true,
     },
+    color: {
+      type: String,
+      default: "#3B82F6",
+    },
+    icon: {
+      type: String,
+      default: "FaBook",
+    },
     lessons: [
       {
         type: mongoose.Schema.Types.ObjectId,

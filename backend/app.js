@@ -38,6 +38,8 @@ app.use(compression());
 // import routes
 const auth = require("./routers/auth/auth");
 const fileRouter = require("./routers/files/fileRouter");
+const categoryRouter = require("./routers/chat/categoryRouter");
+const lessonRouter = require("./routers/chat/lessonRouter");
 // morgan routes view log
 if (app.get("env") === "development") {
   app.use(morgan("tiny"));
@@ -54,6 +56,8 @@ mongoose
 // use routes
 app.use("/api/auth", auth); // Public route (login) and protected route (verify)
 app.use("/api/files", fileRouter); // Protected routes - file upload/management
+app.use("/api/categories", categoryRouter); // Protected routes - categories and lessons
+app.use("/api/lessons", lessonRouter); // Protected routes - lesson management
 
 // server welcome response
 app.get("/", (req, res) => {

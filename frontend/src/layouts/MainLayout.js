@@ -1,17 +1,43 @@
-import React from "react";
-import { Box, VStack, Text, Heading } from "@chakra-ui/react";
+import React, { useState, useEffect } from "react";
+import {
+  Box,
+  VStack,
+  Text,
+  Heading,
+  Button,
+  useToast,
+  Collapse,
+  useDisclosure,
+} from "@chakra-ui/react";
 import MainNavBar from "./components/MainNavBar";
+import NewCategoryModal from "./components/NewCategoryModal";
+import NewLessonModal from "./components/NewLessonModal";
+import { categoryApi } from "../api";
 
 const MainLayout = ({ children }) => {
+  const [isLoading, setIsLoading] = useState(false);
+  const [categories, setCategories] = useState([]);
+  const [lessonsWithoutCategory, setLessonsWithoutCategory] = useState([]);
   const sidebarWidth = 275;
-
+  const toast = useToast();
   // Mock data - replace with actual data from your backend
-  const categories = [
-    { id: 1, name: "Mathematics", lessonsCount: 12 },
-    { id: 2, name: "Science", lessonsCount: 8 },
-    { id: 3, name: "History", lessonsCount: 15 },
-    { id: 4, name: "Literature", lessonsCount: 10 },
-  ];
+  // const categories = [
+  //   { id: 1, name: "Mathematics", lessonsCount: 12 },
+  //   { id: 2, name: "Science", lessonsCount: 8 },
+  //   { id: 3, name: "History", lessonsCount: 15 },
+  //   { id: 4, name: "Literature", lessonsCount: 10 },
+  // ];
+  const { isOpen, onToggle } = useDisclosure();
+  const {
+    isOpen: isNewCategoryModalOpen,
+    onOpen: onNewCategoryModalOpen,
+    onClose: onNewCategoryModalClose,
+  } = useDisclosure();
+  const {
+    isOpen: isNewLessonModalOpen,
+    onOpen: onNewLessonModalOpen,
+    onClose: onNewLessonModalClose,
+  } = useDisclosure();
 
   const lessons = [
     {
@@ -33,6 +59,35 @@ const MainLayout = ({ children }) => {
     { id: 7, title: "Shakespeare Works", category: "Literature", progress: 20 },
     { id: 8, title: "Modern Poetry", category: "Literature", progress: 80 },
   ];
+
+  const getDataForDisplay = async () => {
+    setIsLoading(true);
+    try {
+      const data = await categoryApi.getAllCategoriesAndLessons();
+      if (data.status) {
+        setCategories(data.data.categories);
+        setLessonsWithoutCategory(data.data.uncategorizedLessons);
+      } else {
+        toast({
+          title: "Failed fetching data",
+          description: data.message || "failed",
+          status: "error",
+          duration: 3000,
+          isClosable: true,
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching categories and lessons:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    getDataForDisplay();
+  }, []);
+
+  // data will have: { status, message, data: { categories, uncategorizedLessons } }
 
   return (
     <Box bgColor="#0F172A" minH="100vh">
@@ -70,26 +125,55 @@ const MainLayout = ({ children }) => {
               Categories
             </Heading>
             <VStack spacing={3} align="stretch">
+              <Button
+                align="center"
+                bg={"white"}
+                border="1px solid"
+                borderColor={"blue.300"}
+                bgColor={"blue.50"}
+                color="blue.700"
+                borderRadius="md"
+                p={4}
+                boxShadow="sm"
+                _hover={{ bg: "blue.100", borderColor: "blue.400" }}
+                cursor="pointer"
+                onClick={onNewCategoryModalOpen}
+                transition="all 0.3s ease"
+                mb="1"
+              >
+                <Text fontSize="sm" color={"gray.600"} flex="1">
+                  + Create New Category
+                </Text>
+              </Button>
               {categories.map((category) => (
-                <Box
-                  key={category.id}
-                  p={4}
-                  bg="#334155"
-                  borderRadius="md"
-                  cursor="pointer"
-                  _hover={{
-                    bg: "#475569",
-                    transform: "translateX(4px)",
-                    transition: "all 0.2s",
-                  }}
-                >
-                  <Text color="white" fontWeight="bold">
-                    {category.name}
-                  </Text>
-                  <Text color="gray.400" fontSize="sm">
-                    {category.lessonsCount} lessons
-                  </Text>
-                </Box>
+                <>
+                  <Box
+                    key={category._id}
+                    p={4}
+                    bg="#334155"
+                    borderRadius="md"
+                    cursor="pointer"
+                    _hover={{
+                      bg: "#475569",
+                      transform: "translateX(4px)",
+                      transition: "all 0.2s",
+                    }}
+                    onClick={onToggle}
+                  >
+                    <Text color="white" fontWeight="bold">
+                      {category.title}
+                    </Text>
+                    <Text color="gray.400" fontSize="sm">
+                      {category.lessonsCount} lessons
+                    </Text>
+                    <Button> + for adding lesson to category</Button>
+                  </Box>
+                  <Collapse in={isOpen} animateOpacity>
+                    {category.lessons.map((lesson) => (
+                      <Box key={lesson._id}></Box>
+                    ))}
+                  </Collapse>
+                </>
               ))}
             </VStack>
           </Box>
@@ -100,7 +184,27 @@ const MainLayout = ({ children }) => {
               Recent Lessons
             </Heading>
             <VStack spacing={3} align="stretch">
-              {lessons.map((lesson) => (
+              <Button
+                align="center"
+                bg={"white"}
+                border="1px solid"
+                borderColor={"blue.300"}
+                bgColor={"blue.50"}
+                color="blue.700"
+                borderRadius="md"
+                p={4}
+                boxShadow="sm"
+                _hover={{ bg: "blue.100", borderColor: "blue.400" }}
+                cursor="pointer"
+                onClick={onNewLessonModalOpen}
+                transition="all 0.3s ease"
+                mb="1"
+              >
+                <Text fontSize="sm" color={"gray.600"} flex="1">
+                  + Create New Lesson
+                </Text>
+              </Button>
+              {lessonsWithoutCategory.map((lesson) => (
                 <Box
                   key={lesson.id}
                   p={4}
@@ -151,6 +255,19 @@ const MainLayout = ({ children }) => {
         {/* Main Content */}
         <Box p={6}>{children}</Box>
       </Box>
+
+      {/* Modals */}
+      <NewCategoryModal
+        isOpen={isNewCategoryModalOpen}
+        onClose={onNewCategoryModalClose}
+        onCategoryCreated={getDataForDisplay}
+      />
+      <NewLessonModal
+        isOpen={isNewLessonModalOpen}
+        onClose={onNewLessonModalClose}
+        onLessonCreated={getDataForDisplay}
+        categories={categories}
+      />
     </Box>
   );
 };

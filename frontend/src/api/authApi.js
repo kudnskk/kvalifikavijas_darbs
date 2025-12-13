@@ -47,7 +47,8 @@ const authApi = {
   // Logout user
   logout: () => {
     localStorage.removeItem("authToken");
-    window.location.href = "/login";
+    localStorage.removeItem("sessionToken");
+    window.location.href = "/#/login";
   },
 
   // Check if user is authenticated
