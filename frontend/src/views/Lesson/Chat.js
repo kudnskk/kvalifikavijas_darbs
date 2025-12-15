@@ -68,6 +68,7 @@ const Chat = () => {
       socket.emit("join_lesson_room", id);
 
       const handleNewMessage = (newMessage) => {
+        console.log(newMessage);
         setIsWaitingForResponse(false);
         setMessages((prevMessages) => [...prevMessages, newMessage]);
       };

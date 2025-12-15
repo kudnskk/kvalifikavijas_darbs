@@ -35,11 +35,9 @@ const messageSchema = new mongoose.Schema(
     file: {
       type: {
         type: String,
-        required: true,
       },
       content: {
         type: String,
-        required: true,
       },
     },
   },
