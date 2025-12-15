@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Modal,
   ModalOverlay,
@@ -17,11 +17,24 @@ import {
 } from "@chakra-ui/react";
 import { categoryApi } from "../../api";
 
-const NewLessonModal = ({ isOpen, onClose, onLessonCreated, categories }) => {
+const NewLessonModal = ({
+  isOpen,
+  onClose,
+  onLessonCreated,
+  categories,
+  selectedCategoryId = null,
+}) => {
   const [title, setTitle] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const toast = useToast();
+
+  // Set category when modal opens with a pre-selected category
+  useEffect(() => {
+    if (isOpen && selectedCategoryId) {
+      setCategoryId(selectedCategoryId);
+    }
+  }, [isOpen, selectedCategoryId]);
 
   const handleSubmit = async () => {
     if (!title.trim()) {

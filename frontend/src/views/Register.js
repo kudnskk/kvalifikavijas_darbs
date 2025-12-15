@@ -16,7 +16,7 @@ import {
   IconButton,
   FormHelperText,
 } from "@chakra-ui/react";
-//import { ViewIcon, ViewOffIcon } from '@chakra-ui/icons';
+
 import { useNavigate } from "react-router-dom";
 import { GrView } from "react-icons/gr";
 import { LuEye, LuEyeClosed } from "react-icons/lu";
@@ -188,9 +188,6 @@ const Register = () => {
                       variant="ghost"
                       icon={showPassword ? <LuEyeClosed /> : <LuEye />}
                       onClick={() => setShowPassword(!showPassword)}
-                      aria-label={
-                        showPassword ? "Hide password" : "Show password"
-                      }
                     />
                   </InputRightElement>
                 </InputGroup>
@@ -216,9 +213,6 @@ const Register = () => {
                       icon={showConfirmPassword ? <LuEyeClosed /> : <LuEye />}
                       onClick={() =>
                         setShowConfirmPassword(!showConfirmPassword)
-                      }
-                      aria-label={
-                        showConfirmPassword ? "Hide password" : "Show password"
                       }
                     />
                   </InputRightElement>

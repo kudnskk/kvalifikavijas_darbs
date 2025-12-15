@@ -8,26 +8,50 @@ import {
   useToast,
   Collapse,
   useDisclosure,
+  Flex,
+  IconButton,
+  Tooltip,
+  Icon,
+  Divider,
 } from "@chakra-ui/react";
+import { FaPlus } from "react-icons/fa";
 import MainNavBar from "./components/MainNavBar";
 import NewCategoryModal from "./components/NewCategoryModal";
 import NewLessonModal from "./components/NewLessonModal";
+import { FaChevronRight, FaChevronDown } from "react-icons/fa6";
 import { categoryApi } from "../api";
+import { useNavigate } from "react-router-dom";
+import { FaBook, FaLaptopCode, FaCalculator, FaBrain } from "react-icons/fa";
+
+const COLORS = [
+  { name: "Blue", value: "#3B82F6" },
+  { name: "Purple", value: "#8B5CF6" },
+  { name: "Red", value: "#EF4444" },
+  { name: "Orange", value: "#F97316" },
+  { name: "Green", value: "#10B981" },
+];
+const ICONS = [
+  { name: "FaBook", component: FaBook },
+  { name: "FaLaptopCode", component: FaLaptopCode },
+  { name: "FaCalculator", component: FaCalculator },
+  { name: "FaBrain", component: FaBrain },
+];
+
+const findTheIcon = (iconName) => {
+  const iconObj = ICONS.find((icon) => icon.name === iconName);
+  return iconObj ? iconObj.component : FaBook;
+};
 
 const MainLayout = ({ children }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [categories, setCategories] = useState([]);
-  const [lessonsWithoutCategory, setLessonsWithoutCategory] = useState([]);
+  const [lessons, setLessons] = useState([]);
+  const [expandedCategories, setExpandedCategories] = useState({});
+  const [selectedCategoryForLesson, setSelectedCategoryForLesson] =
+    useState(null);
   const sidebarWidth = 275;
   const toast = useToast();
-  // Mock data - replace with actual data from your backend
-  // const categories = [
-  //   { id: 1, name: "Mathematics", lessonsCount: 12 },
-  //   { id: 2, name: "Science", lessonsCount: 8 },
-  //   { id: 3, name: "History", lessonsCount: 15 },
-  //   { id: 4, name: "Literature", lessonsCount: 10 },
-  // ];
-  const { isOpen, onToggle } = useDisclosure();
+  const navigate = useNavigate();
   const {
     isOpen: isNewCategoryModalOpen,
     onOpen: onNewCategoryModalOpen,
@@ -39,26 +63,22 @@ const MainLayout = ({ children }) => {
     onClose: onNewLessonModalClose,
   } = useDisclosure();
 
-  const lessons = [
-    {
-      id: 1,
-      title: "Introduction to Algebra",
-      category: "Mathematics",
-      progress: 75,
-    },
-    { id: 2, title: "Geometry Basics", category: "Mathematics", progress: 50 },
-    { id: 3, title: "Physics Fundamentals", category: "Science", progress: 30 },
-    { id: 4, title: "Chemistry 101", category: "Science", progress: 60 },
-    { id: 5, title: "World War II", category: "History", progress: 90 },
-    {
-      id: 6,
-      title: "Ancient Civilizations",
-      category: "History",
-      progress: 45,
-    },
-    { id: 7, title: "Shakespeare Works", category: "Literature", progress: 20 },
-    { id: 8, title: "Modern Poetry", category: "Literature", progress: 80 },
-  ];
+  const toggleCategory = (categoryId) => {
+    setExpandedCategories((prev) => ({
+      ...prev,
+      [categoryId]: !prev[categoryId],
+    }));
+  };
+
+  const handleOpenLessonModal = (categoryId = null) => {
+    setSelectedCategoryForLesson(categoryId);
+    onNewLessonModalOpen();
+  };
+
+  const handleCloseLessonModal = () => {
+    setSelectedCategoryForLesson(null);
+    onNewLessonModalClose();
+  };
 
   const getDataForDisplay = async () => {
     setIsLoading(true);
@@ -66,7 +86,7 @@ const MainLayout = ({ children }) => {
       const data = await categoryApi.getAllCategoriesAndLessons();
       if (data.status) {
         setCategories(data.data.categories);
-        setLessonsWithoutCategory(data.data.uncategorizedLessons);
+        setLessons(data.data.lessons);
       } else {
         toast({
           title: "Failed fetching data",
@@ -87,11 +107,8 @@ const MainLayout = ({ children }) => {
     getDataForDisplay();
   }, []);
 
-  // data will have: { status, message, data: { categories, uncategorizedLessons } }
-
   return (
     <Box bgColor="#0F172A" minH="100vh">
-      {/* Fixed Left Sidebar */}
       <Box
         position="fixed"
         top="0"
@@ -102,78 +119,117 @@ const MainLayout = ({ children }) => {
         borderRight="1px solid"
         borderColor="#334155"
         overflowY="auto"
-        css={{
-          "&::-webkit-scrollbar": {
-            width: "8px",
-          },
-          "&::-webkit-scrollbar-track": {
-            background: "#1E293B",
-          },
-          "&::-webkit-scrollbar-thumb": {
-            background: "#475569",
-            borderRadius: "4px",
-          },
-          "&::-webkit-scrollbar-thumb:hover": {
-            background: "#64748b",
-          },
-        }}
       >
-        <VStack spacing={6} p={6} align="stretch">
-          {/* Categories Section */}
+        <VStack spacing={6} py={6} px={2} align="stretch">
           <Box>
             <Heading size="md" color="white" mb={4}>
               Categories
             </Heading>
             <VStack spacing={3} align="stretch">
               <Button
-                align="center"
-                bg={"white"}
-                border="1px solid"
-                borderColor={"blue.300"}
-                bgColor={"blue.50"}
-                color="blue.700"
-                borderRadius="md"
-                p={4}
-                boxShadow="sm"
-                _hover={{ bg: "blue.100", borderColor: "blue.400" }}
-                cursor="pointer"
                 onClick={onNewCategoryModalOpen}
-                transition="all 0.3s ease"
+                variant="outline"
+                colorScheme="blue"
+                _hover={{
+                  transform: "scale(1.02)",
+                  boxShadow: "md",
+                }}
+                transition="all 0.2s ease-in-out"
                 mb="1"
               >
-                <Text fontSize="sm" color={"gray.600"} flex="1">
-                  + Create New Category
-                </Text>
+                + Create New Category
               </Button>
+              <Divider />
               {categories.map((category) => (
-                <>
-                  <Box
-                    key={category._id}
-                    p={4}
-                    bg="#334155"
+                <Box key={category._id}>
+                  <Flex
+                    p={3}
                     borderRadius="md"
-                    cursor="pointer"
-                    _hover={{
-                      bg: "#475569",
-                      transform: "translateX(4px)",
-                      transition: "all 0.2s",
-                    }}
-                    onClick={onToggle}
+                    border="1px solid"
+                    borderColor={category.color}
+                    align="center"
+                    onClick={() => toggleCategory(category._id)}
                   >
-                    <Text color="white" fontWeight="bold">
-                      {category.title}
-                    </Text>
-                    <Text color="gray.400" fontSize="sm">
-                      {category.lessonsCount} lessons
-                    </Text>
-                    <Button> + for adding lesson to category</Button>
-                  </Box>
-                  <Collapse in={isOpen} animateOpacity>
-                    {category.lessons.map((lesson) => (
-                      <Box key={lesson._id}></Box>
-                    ))}
+                    <Flex align="center" gap={2} flex={1}>
+                      <Icon
+                        as={findTheIcon(category.icon)}
+                        boxSize={6}
+                        color={category.color}
+                      />
+                      <Box>
+                        <Text color="white" fontWeight="bold" fontSize="sm">
+                          {category.title}
+                        </Text>
+                        <Text color="gray.100" fontSize="xs">
+                          {category.lessonsCount} lessons
+                        </Text>
+                      </Box>
+                    </Flex>
+
+                    <Tooltip
+                      label="Add lesson to this category"
+                      placement="top"
+                      hasArrow
+                    >
+                      <IconButton
+                        icon={<FaPlus />}
+                        size="xs"
+                        variant="ghost"
+                        color="gray.100"
+                        _hover={{ color: category.color, bg: "transparent" }}
+                        mr="2"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenLessonModal(category._id);
+                        }}
+                        cursor="pointer"
+                      />
+                    </Tooltip>
+                    <Icon
+                      as={
+                        expandedCategories[category._id]
+                          ? FaChevronDown
+                          : FaChevronRight
+                      }
+                      boxSize={3}
+                      color="gray.100"
+                      _hover={{ color: category.color }}
+                      cursor="pointer"
+                    />
+                  </Flex>
+                  <Collapse
+                    in={expandedCategories[category._id]}
+                    animateOpacity
+                  >
+                    <VStack spacing={2} align="stretch" mt={2} ml={2}>
+                      {category.lessons.map((lesson) => (
+                        <Flex
+                          key={lesson._id}
+                          p={2}
+                          pl={4}
+                          borderLeft="2px solid"
+                          borderLeftColor={category.color}
+                          borderRadius="md"
+                          cursor="pointer"
+                          _hover={{
+                            bg: "#334155",
+                            transition: "all 0.2s",
+                          }}
+                          onClick={() => navigate(`/lesson/${lesson._id}`)}
+                          justify="space-between"
+                          align="center"
+                        >
+                          <Text color="white" fontWeight="medium" fontSize="sm">
+                            {lesson.title}
+                          </Text>
+                          <Text color="gray.400" fontSize="xs">
+                            {lesson.status}
+                          </Text>
+                        </Flex>
+                      ))}
+                    </VStack>
                   </Collapse>
-                </>
+                </Box>
               ))}
             </VStack>
           </Box>
@@ -183,32 +239,29 @@ const MainLayout = ({ children }) => {
             <Heading size="md" color="white" mb={4}>
               Recent Lessons
             </Heading>
+
             <VStack spacing={3} align="stretch">
               <Button
-                align="center"
-                bg={"white"}
-                border="1px solid"
-                borderColor={"blue.300"}
-                bgColor={"blue.50"}
-                color="blue.700"
-                borderRadius="md"
-                p={4}
-                boxShadow="sm"
-                _hover={{ bg: "blue.100", borderColor: "blue.400" }}
-                cursor="pointer"
-                onClick={onNewLessonModalOpen}
-                transition="all 0.3s ease"
+                variant="outline"
+                colorScheme="red"
+                _hover={{
+                  transform: "scale(1.02)",
+                  boxShadow: "md",
+                }}
+                onClick={() => handleOpenLessonModal()}
+                transition="all 0.2s ease-in-out"
                 mb="1"
               >
-                <Text fontSize="sm" color={"gray.600"} flex="1">
-                  + Create New Lesson
-                </Text>
+                + Create New Lesson
               </Button>
-              {lessonsWithoutCategory.map((lesson) => (
+              <Divider mb={3} />
+              {lessons.map((lesson) => (
                 <Box
-                  key={lesson.id}
+                  key={lesson._id}
                   p={4}
                   bg="#334155"
+                  borderLeft="2px solid"
+                  borderLeftColor={lesson?.category_id?.color || "gray"}
                   borderRadius="md"
                   cursor="pointer"
                   _hover={{
@@ -216,23 +269,18 @@ const MainLayout = ({ children }) => {
                     transform: "translateX(4px)",
                     transition: "all 0.2s",
                   }}
+                  onClick={() => navigate(`/lesson/${lesson._id}`)}
                 >
-                  <Text color="white" fontWeight="semibold" mb={1}>
-                    {lesson.title}
-                  </Text>
-                  <Text color="gray.400" fontSize="sm" mb={2}>
-                    {lesson.category}
-                  </Text>
-                  <Box bg="#1E293B" borderRadius="full" h="6px" w="100%">
-                    <Box
-                      bg="blue.500"
-                      h="100%"
-                      borderRadius="full"
-                      w={`${lesson.progress}%`}
-                    />
-                  </Box>
-                  <Text color="gray.400" fontSize="xs" mt={1}>
-                    {lesson.progress}% complete
+                  <Flex align="center" justify={"space-between"}>
+                    <Text color="white" fontWeight="semibold" mb={1}>
+                      {lesson?.title}
+                    </Text>
+                    <Text color="gray.400" fontSize="xs">
+                      {lesson?.status}
+                    </Text>
+                  </Flex>
+                  <Text color="gray.100" fontSize="sm">
+                    Category: {lesson?.category_id?.title || "-"}
                   </Text>
                 </Box>
               ))}
@@ -253,7 +301,7 @@ const MainLayout = ({ children }) => {
         <MainNavBar />
 
         {/* Main Content */}
-        <Box p={6}>{children}</Box>
+        <Box>{children}</Box>
       </Box>
 
       {/* Modals */}
@@ -264,9 +312,10 @@ const MainLayout = ({ children }) => {
       />
       <NewLessonModal
         isOpen={isNewLessonModalOpen}
-        onClose={onNewLessonModalClose}
+        onClose={handleCloseLessonModal}
         onLessonCreated={getDataForDisplay}
         categories={categories}
+        selectedCategoryId={selectedCategoryForLesson}
       />
     </Box>
   );

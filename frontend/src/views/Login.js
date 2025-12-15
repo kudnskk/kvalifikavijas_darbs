@@ -116,9 +116,6 @@ const Login = () => {
                     variant="ghost"
                     // icon={showPassword ? <ViewOffIcon /> : <ViewIcon />}
                     onClick={() => setShowPassword(!showPassword)}
-                    aria-label={
-                      showPassword ? "Hide password" : "Show password"
-                    }
                   />
                 </InputRightElement>
               </InputGroup>

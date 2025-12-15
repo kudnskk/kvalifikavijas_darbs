@@ -13,6 +13,34 @@ dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
+const { Server } = require("socket.io");
+const io = new Server(server, {
+  cors: {
+    origin: "http://localhost:3000", // Your frontend URL
+    methods: ["GET", "POST"],
+  },
+});
+
+// Socket.IO connection handling
+io.on("connection", (socket) => {
+  console.log("A user connected:", socket.id);
+
+  socket.on("join_lesson_room", (lessonId) => {
+    socket.join(lessonId);
+    console.log(`User ${socket.id} joined room ${lessonId}`);
+  });
+
+  socket.on("disconnect", () => {
+    console.log("User disconnected:", socket.id);
+  });
+});
+
+// Pass io instance to routes
+app.use((req, res, next) => {
+  req.io = io;
+  next();
+});
+
 //heasers security
 app.use(cors());
 app.use(helmet());
@@ -40,6 +68,7 @@ const auth = require("./routers/auth/auth");
 const fileRouter = require("./routers/files/fileRouter");
 const categoryRouter = require("./routers/chat/categoryRouter");
 const lessonRouter = require("./routers/chat/lessonRouter");
+const messageRouter = require("./routers/chat/messageRouter");
 // morgan routes view log
 if (app.get("env") === "development") {
   app.use(morgan("tiny"));
@@ -58,6 +87,7 @@ app.use("/api/auth", auth); // Public route (login) and protected route (verify)
 app.use("/api/files", fileRouter); // Protected routes - file upload/management
 app.use("/api/categories", categoryRouter); // Protected routes - categories and lessons
 app.use("/api/lessons", lessonRouter); // Protected routes - lesson management
+app.use("/api/messages", messageRouter); // Protected routes - lesson messages
 
 // server welcome response
 app.get("/", (req, res) => {

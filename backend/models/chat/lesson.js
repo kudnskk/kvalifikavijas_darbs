@@ -10,7 +10,7 @@ const lessonSchema = new mongoose.Schema(
       maxlength: 20,
       trim: true,
     },
-    texts: [
+    messages: [
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Message",

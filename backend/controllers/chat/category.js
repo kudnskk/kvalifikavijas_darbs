@@ -17,12 +17,12 @@ const getAllCategoriesAndLessons = async (req, res) => {
       ...category,
       lessonsCount: category.lessons.length,
     }));
-    // Get lessons without a category
-    const uncategorizedLessons = await Lesson.find({
-      user_id: userId,
-      category_id: null,
-    })
+    const lessons = await Lesson.find({ user_id: userId })
+      .sort({
+        updatedAt: -1,
+      })
       .select("title status createdAt updatedAt")
+      .populate("category_id", "title color")
       .lean();
 
     return res.status(200).json({
@@ -30,7 +30,7 @@ const getAllCategoriesAndLessons = async (req, res) => {
       message: "Categories and lessons fetched successfully",
       data: {
         categories,
-        uncategorizedLessons,
+        lessons,
       },
     });
   } catch (error) {

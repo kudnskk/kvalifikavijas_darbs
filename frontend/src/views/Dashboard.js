@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Container,
@@ -18,6 +18,8 @@ import {
   StatArrow,
   HStack,
   VStack,
+  useDisclosure,
+  useToast,
 } from "@chakra-ui/react";
 import {
   FiBook,
@@ -28,9 +30,26 @@ import {
   FiFolder,
 } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
+import NewCategoryModal from "../layouts/components/NewCategoryModal";
+import NewLessonModal from "../layouts/components/NewLessonModal";
+import { categoryApi } from "../api";
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const toast = useToast();
+  const [categories, setCategories] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const {
+    isOpen: isNewCategoryModalOpen,
+    onOpen: onNewCategoryModalOpen,
+    onClose: onNewCategoryModalClose,
+  } = useDisclosure();
+  const {
+    isOpen: isNewLessonModalOpen,
+    onOpen: onNewLessonModalOpen,
+    onClose: onNewLessonModalClose,
+  } = useDisclosure();
 
   const userStats = {
     totalLessons: 24,
@@ -41,14 +60,38 @@ const Dashboard = () => {
     weeklyProgress: 12,
   };
 
+  const getDataForDisplay = async () => {
+    setIsLoading(true);
+    try {
+      const data = await categoryApi.getAllCategoriesAndLessons();
+      if (data.status) {
+        setCategories(data.data.categories);
+      } else {
+        toast({
+          title: "Failed fetching data",
+          description: data.message || "failed",
+          status: "error",
+          duration: 3000,
+          isClosable: true,
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    getDataForDisplay();
+  }, []);
+
   const handleCreateLesson = () => {
-    // Navigate to create lesson page or open modal
-    console.log("Create new lesson");
+    onNewLessonModalOpen();
   };
 
   const handleCreateCategory = () => {
-    // Navigate to create category page or open modal
-    console.log("Create new category");
+    onNewCategoryModalOpen();
   };
 
   return (
@@ -73,7 +116,7 @@ const Dashboard = () => {
               }}
               transition="all 0.2s ease-in-out"
             >
-              + New Lesson
+              + Create New Lesson
             </Button>
 
             <Button
@@ -86,7 +129,7 @@ const Dashboard = () => {
               }}
               transition="all 0.2s ease-in-out"
             >
-              + New Category
+              + Create New Category
             </Button>
           </HStack>
         </Flex>
@@ -151,6 +194,19 @@ const Dashboard = () => {
           </Card>
         </SimpleGrid>
       </Container>
+
+      {/* Modals */}
+      <NewCategoryModal
+        isOpen={isNewCategoryModalOpen}
+        onClose={onNewCategoryModalClose}
+        onCategoryCreated={getDataForDisplay}
+      />
+      <NewLessonModal
+        isOpen={isNewLessonModalOpen}
+        onClose={onNewLessonModalClose}
+        onLessonCreated={getDataForDisplay}
+        categories={categories}
+      />
     </Box>
   );
 };

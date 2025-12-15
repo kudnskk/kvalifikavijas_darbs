@@ -20,49 +20,20 @@ import {
   Icon,
   Text,
 } from "@chakra-ui/react";
-import {
-  FaBook,
-  FaLaptopCode,
-  FaFlask,
-  FaCalculator,
-  FaGlobe,
-  FaPalette,
-  FaMusic,
-  FaFootballBall,
-  FaHeart,
-  FaRocket,
-  FaStar,
-  FaBrain,
-} from "react-icons/fa";
+import { FaBook, FaLaptopCode, FaCalculator, FaBrain } from "react-icons/fa";
 import { categoryApi } from "../../api";
 
-// Available colors with names
 const COLORS = [
   { name: "Blue", value: "#3B82F6" },
   { name: "Purple", value: "#8B5CF6" },
-  { name: "Pink", value: "#EC4899" },
   { name: "Red", value: "#EF4444" },
   { name: "Orange", value: "#F97316" },
-  { name: "Yellow", value: "#EAB308" },
   { name: "Green", value: "#10B981" },
-  { name: "Teal", value: "#14B8A6" },
-  { name: "Cyan", value: "#06B6D4" },
-  { name: "Indigo", value: "#6366F1" },
 ];
-
-// Available icons
 const ICONS = [
   { name: "FaBook", component: FaBook },
   { name: "FaLaptopCode", component: FaLaptopCode },
-  { name: "FaFlask", component: FaFlask },
   { name: "FaCalculator", component: FaCalculator },
-  { name: "FaGlobe", component: FaGlobe },
-  { name: "FaPalette", component: FaPalette },
-  { name: "FaMusic", component: FaMusic },
-  { name: "FaFootballBall", component: FaFootballBall },
-  { name: "FaHeart", component: FaHeart },
-  { name: "FaRocket", component: FaRocket },
-  { name: "FaStar", component: FaStar },
   { name: "FaBrain", component: FaBrain },
 ];
 

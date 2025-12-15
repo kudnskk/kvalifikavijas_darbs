@@ -39,10 +39,22 @@ const categoryApi = {
       throw error.response?.data || error.message;
     }
   },
+
+  getAllUserLessons: async () => {
+    try {
+      const response = await axiosInstance.post("lessons/get-all-user-lessons");
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
 };
 
 export default categoryApi;
 
-// Also export individual functions for named imports
-export const { getAllCategoriesAndLessons, createCategory, createLesson } =
-  categoryApi;
+export const {
+  getAllCategoriesAndLessons,
+  createCategory,
+  createLesson,
+  getAllUserLessons,
+} = categoryApi;

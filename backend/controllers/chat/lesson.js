@@ -61,6 +61,29 @@ const createLesson = async (req, res) => {
   }
 };
 
+const getAllUserLessons = async (req, res) => {
+  try {
+    const userId = res.locals.user.id;
+
+    const lessons = await Lesson.find({ user_id: userId }).sort({
+      updatedAt: -1,
+    });
+
+    return res.status(200).json({
+      status: true,
+      message: "Lessons fetched successfully",
+      data: lessons,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: false,
+      message: "Failed to fetch lessons",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   createLesson,
+  getAllUserLessons,
 };
