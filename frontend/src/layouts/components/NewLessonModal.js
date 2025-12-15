@@ -110,7 +110,7 @@ const NewLessonModal = ({
 
   return (
     <Modal isOpen={isOpen} onClose={handleClose} size="md">
-      <ModalOverlay bg="blackAlpha.600" />
+      <ModalOverlay />
       <ModalContent bg="#1E293B" borderColor="#334155" borderWidth="1px">
         <ModalHeader color="white">Create New Lesson</ModalHeader>
         <ModalCloseButton color="white" />

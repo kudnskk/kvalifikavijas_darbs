@@ -5,16 +5,23 @@ import {
   Flex,
   Textarea,
   Text,
-  useDisclosure,
   Center,
   Divider,
   useToast,
+  Icon,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalCloseButton,
+  ModalBody,
+  useDisclosure,
 } from "@chakra-ui/react";
 import { useParams } from "react-router-dom";
-import FileModal from "./components/FileModal";
 import ChatFileDropzone from "./components/ChatFileDropzone";
 import { messageApi } from "../../api";
 import socket from "../../api/socket";
+import { FaFilePdf, FaFileWord, FaFileAlt } from "react-icons/fa";
 
 const transformDate = (dateString) => {
   const date = new Date(dateString);
@@ -25,23 +32,41 @@ const transformDate = (dateString) => {
   });
 };
 
+const getFileIcon = (fileOrMimeType) => {
+  const mimeType =
+    typeof fileOrMimeType === "string" ? fileOrMimeType : fileOrMimeType?.type;
+
+  if (mimeType === "application/pdf") {
+    return FaFilePdf;
+  } else if (
+    mimeType === "application/msword" ||
+    mimeType ===
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+  ) {
+    return FaFileWord;
+  } else {
+    return FaFileAlt;
+  }
+};
+
 const Chat = () => {
   const { id } = useParams();
   const [isLoading, setIsLoading] = useState(false);
   const [selectedLesson, setSelectedLesson] = useState(null);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
-  const {
-    isOpen: isFileModalOpen,
-    onOpen: onFileModalOpen,
-    onClose: onFileModalClose,
-  } = useDisclosure();
   const [file, setFile] = useState(null);
   const [attachedFiles, setAttachedFiles] = useState([]);
   const [isWaitingForResponse, setIsWaitingForResponse] = useState(false);
   const toast = useToast();
   const messagesEndRef = useRef(null);
   const scrollContainerRef = useRef(null);
+  const {
+    isOpen: isFileViewerOpen,
+    onOpen: onFileViewerOpen,
+    onClose: onFileViewerClose,
+  } = useDisclosure();
+  const [fileViewerData, setFileViewerData] = useState(null);
 
   const getAllMessagesFunc = async () => {
     setIsLoading(true);
@@ -65,7 +90,25 @@ const Chat = () => {
     setSelectedLesson(id);
     if (id) {
       getAllMessagesFunc();
-      socket.emit("join_lesson_room", id);
+
+      const joinRoom = () => {
+        socket.emit("join_lesson_room", id);
+      };
+
+      // Debug: confirm the socket is connected
+      const onConnect = () => {
+        console.log("[socket] connected", socket.id);
+        joinRoom();
+      };
+      const onConnectError = (err) =>
+        console.error("[socket] connect_error", err?.message || err);
+      socket.on("connect", onConnect);
+      socket.on("connect_error", onConnectError);
+
+      //join room
+      if (socket.connected) {
+        joinRoom();
+      }
 
       const handleNewMessage = (newMessage) => {
         setIsWaitingForResponse(false);
@@ -76,6 +119,8 @@ const Chat = () => {
 
       return () => {
         socket.off("new_message", handleNewMessage);
+        socket.off("connect", onConnect);
+        socket.off("connect_error", onConnectError);
       };
     }
   }, [id]);
@@ -108,27 +153,46 @@ const Chat = () => {
   };
 
   const handleSendMessage = async () => {
-    if (newMessage.trim()) {
-      const formDataToSend = new FormData();
+    const hasText = Boolean(newMessage.trim());
+    const hasFile = Boolean(file);
 
-      // Append text fields
-      formDataToSend.append("lesson_id", id);
-      formDataToSend.append("content", newMessage);
-      formDataToSend.append("type", "text");
-      if (file) {
-        formDataToSend.append("file", file);
-      }
+    if (!hasText && !hasFile) return;
 
-      const savedMessage = await createMessageFunc(formDataToSend);
+    const payload = hasFile
+      ? (() => {
+          const formDataToSend = new FormData();
+          formDataToSend.append("lesson_id", id);
+          formDataToSend.append("content", newMessage);
+          formDataToSend.append("type", "text");
+          formDataToSend.append("file", file);
+          return formDataToSend;
+        })()
+      : {
+          lesson_id: id,
+          content: newMessage,
+          type: "text",
+        };
 
-      if (savedMessage) {
-        setMessages((prev) => [...prev, savedMessage]);
-        setNewMessage("");
-        setFile(null);
-        setAttachedFiles([]);
-        onFileModalClose();
-      }
+    const savedMessage = await createMessageFunc(payload);
+
+    if (savedMessage) {
+      setMessages((prev) => [...prev, savedMessage]);
+      setNewMessage("");
+      setFile(null);
+      setAttachedFiles([]);
     }
+  };
+
+  const openFileViewer = (message) => {
+    const fileData = message?.file;
+    if (!fileData?.file_name) return;
+
+    setFileViewerData({
+      file_name: fileData.file_name,
+      type: fileData.type,
+      content: fileData.content || "",
+    });
+    onFileViewerOpen();
   };
 
   return (
@@ -256,10 +320,34 @@ const Chat = () => {
 
                           {/* ✅ Timestamp */}
                           {message.createdAt && (
-                            <Text fontSize="xs" color="gray.500" mt={1}>
+                            <Text fontSize="xs" color="gray.500">
                               {transformDate(message.createdAt)}
                             </Text>
                           )}
+                          {message.file &&
+                            message.file.file_name &&
+                            message.file.type && (
+                              <Flex
+                                align="center"
+                                bg="#334155"
+                                size="xs"
+                                px={2}
+                                py={1}
+                                borderRadius="md"
+                                fontSize="xs"
+                                cursor="pointer"
+                                onClick={() => openFileViewer(message)}
+                              >
+                                <Icon
+                                  as={getFileIcon(message.file.type)}
+                                  color="#3B82F6"
+                                  mr={2}
+                                />
+                                <Text color="white" maxW="150px" isTruncated>
+                                  {message.file.file_name}
+                                </Text>
+                              </Flex>
+                            )}
                         </Box>
                       </Flex>
                     </React.Fragment>
@@ -268,7 +356,7 @@ const Chat = () => {
 
               <Box ref={messagesEndRef} height="1px" />
             </Box>
-            <Flex justify="space-between" w="100%">
+            <Flex justify="space-between" w="100%" mb={2}>
               {isWaitingForResponse && (
                 <Text fontSize="sm" color="gray.400" alignSelf="center">
                   Waiting for response...
@@ -278,11 +366,8 @@ const Chat = () => {
             <Flex align={"center"}>
               <ChatFileDropzone
                 onFilesSelected={(files) => {
-                  if (files.length > 0) {
-                    setFile(files[0]);
-                    setAttachedFiles(files);
-                    onFileModalOpen();
-                  }
+                  setAttachedFiles(files);
+                  setFile(files[0] ?? null);
                 }}
                 files={attachedFiles}
               />
@@ -317,20 +402,36 @@ const Chat = () => {
         )}
       </Box>
 
-      <FileModal
-        file={file}
-        setFile={(newFile) => {
-          setFile(newFile);
-          if (!newFile) {
-            setAttachedFiles([]);
-          }
-        }}
-        newMessage={newMessage}
-        setNewMessage={setNewMessage}
-        handleSendMessage={handleSendMessage}
-        isOpen={isFileModalOpen}
-        onClose={onFileModalClose}
-      />
+      <Modal isOpen={isFileViewerOpen} onClose={onFileViewerClose} size="xl">
+        <ModalOverlay />
+        <ModalContent bg="#1E293B">
+          <ModalHeader color="white">
+            {fileViewerData?.file_name || "Attached file"}
+          </ModalHeader>
+          <ModalCloseButton color="white" />
+          <ModalBody pb={4}>
+            <Flex align="center" mb={3} gap={2}>
+              <Icon as={getFileIcon(fileViewerData?.type)} color="#3B82F6" />
+              <Text color="gray.300" fontSize="sm">
+                {fileViewerData?.type || ""}
+              </Text>
+            </Flex>
+            <Box
+              bg="#0F172A"
+              borderRadius="md"
+              p={3}
+              maxH="60vh"
+              overflowY="auto"
+            >
+              <Text color="white" whiteSpace="pre-wrap" fontSize="sm">
+                {fileViewerData?.content
+                  ? fileViewerData.content
+                  : "No extracted text available for this file."}
+              </Text>
+            </Box>
+          </ModalBody>
+        </ModalContent>
+      </Modal>
     </Box>
   );
 };

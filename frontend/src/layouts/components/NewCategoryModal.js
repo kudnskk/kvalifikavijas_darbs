@@ -119,7 +119,7 @@ const NewCategoryModal = ({ isOpen, onClose, onCategoryCreated }) => {
 
   return (
     <Modal isOpen={isOpen} onClose={handleClose} size="lg">
-      <ModalOverlay bg="blackAlpha.600" />
+      <ModalOverlay />
       <ModalContent bg="#1E293B" borderColor="#334155" borderWidth="1px">
         <ModalHeader color="white">Create New Category</ModalHeader>
         <ModalCloseButton color="white" />

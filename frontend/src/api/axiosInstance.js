@@ -5,9 +5,7 @@ import config from "../config";
 const axiosInstance = axios.create({
   baseURL: config.WS_BASE_URL,
   timeout: 10000,
-  headers: {
-    "Content-Type": "application/json",
-  },
+  // Don't force Content-Type globally; it breaks FormData (multipart) requests.
 });
 
 // Request interceptor - adds auth token to every request

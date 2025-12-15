@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const { protect } = require("../../middleware/authProtect");
+const upload = require("../../utils/file_uploads/chatMessageUpload");
 const {
   getMessagesByLessonId,
   createMessage,
@@ -11,6 +12,6 @@ router.get(
   protect,
   getMessagesByLessonId,
 );
-router.post("/create-message", protect, createMessage);
+router.post("/create-message", protect, upload.single("file"), createMessage);
 
 module.exports = router;

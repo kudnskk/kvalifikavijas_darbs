@@ -35,11 +35,12 @@ const messageSchema = new mongoose.Schema(
     file: {
       type: {
         type: String,
-        required: true,
+      },
+      file_name: {
+        type: String,
       },
       content: {
         type: String,
-        required: true,
       },
     },
   },

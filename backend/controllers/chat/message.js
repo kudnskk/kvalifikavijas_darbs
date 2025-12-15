@@ -1,6 +1,7 @@
 const Message = require("../../models/chat/message");
 const Lesson = require("../../models/chat/lesson");
 const { generateAIResponse } = require("../../utils/assistantInstructions");
+const { extractFileText } = require("../../utils/file_uploads/extractFileText");
 
 const getMessagesByLessonId = async (req, res) => {
   try {
@@ -52,15 +53,15 @@ const createMessage = async (req, res) => {
     const userId = res.locals.user.id;
     const { lesson_id, content, type = "text" } = req.body;
 
-    // Validate required fields
-    if (!lesson_id || !content) {
+    const hasFile = Boolean(req.file);
+
+    if (!lesson_id || (!content.trim() && !hasFile)) {
       return res.status(400).json({
         status: false,
-        message: "Lesson ID and content are required",
+        message: "Lesson ID and either content or a file are required",
       });
     }
 
-    // Verify lesson exists and belongs to user
     const lesson = await Lesson.findOne({
       _id: lesson_id,
       user_id: userId,
@@ -73,24 +74,53 @@ const createMessage = async (req, res) => {
       });
     }
 
-    // Create new message
+    if (lesson.status === "not-started") {
+      await Lesson.findByIdAndUpdate(lesson_id, { status: "in-progress" });
+    }
+
+    let extractedFileText = "";
+    let fileMeta = undefined;
+
+    if (hasFile) {
+      try {
+        extractedFileText = await extractFileText(req.file);
+      } catch (e) {
+        return res.status(400).json({
+          status: false,
+          message: e?.message || "Failed to extract text from file",
+        });
+      }
+
+      fileMeta = {
+        type: req.file.mimetype,
+        file_name: req.file.originalname,
+        content: extractedFileText,
+      };
+    }
+
     const newMessage = new Message({
       content: content.trim(),
       type,
       sender_type: "user",
       lesson_id,
       user_id: userId,
+      ...(fileMeta ? { file: fileMeta } : {}),
     });
 
     await newMessage.save();
 
-    // Add message to lesson's texts array
     await Lesson.findByIdAndUpdate(lesson_id, {
       $push: { messages: newMessage._id },
     });
 
-    // Generate AI response and emit it via socket
-    generateAIResponse(content, lesson_id, userId)
+    const aiInput = hasFile
+      ? `${content.trim()}\n\n[Attached file: ${
+          req.file.originalname
+        }]\n${extractedFileText}`
+      : content.trim();
+
+    //using socket send to room
+    generateAIResponse(aiInput, lesson_id, userId)
       .then((aiMessage) => {
         if (aiMessage) {
           io.to(lesson_id).emit("new_message", aiMessage);

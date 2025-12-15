@@ -9,7 +9,10 @@ const client = new OpenAI({
 const getInstructions = (lessonTitle, type) => {
   const text =
     type === "chat"
-      ? `You are a helpful learning assistant for a 3rd-grade student.
+      ? `
+Rules:
+-in each input by the user first the message that student has writen for you is displayed, after that there may be Attached file: <file_name> and the text content of the file
+-if the user refers to the file if means to the content provied after the file name
 
 Your role:
 - Help students understand concepts related to their lesson: "${lessonTitle}"
@@ -49,18 +52,42 @@ const generateAIResponse = async (userMessage, lessonId, userId) => {
 
     previousMessages.reverse(); // oldest -> newest for the model
 
+    const formatMessageForModel = (msg) => {
+      const baseText = typeof msg.content === "string" ? msg.content : "";
+      const hasFile = Boolean(msg.file && msg.file.content);
+
+      if (!hasFile) {
+        return {
+          role: msg.sender_type, // "user" or "assistant"
+          content: baseText,
+        };
+      }
+
+      const fileName = msg.file.file_name || "file";
+      const fileText = msg.file.content || "";
+      return {
+        role: msg.sender_type,
+        content:
+          `${baseText}\n\n[Attached file: ${fileName}]\n${fileText}`.trim(),
+      };
+    };
+
     // Map DB messages to chat-style roles for the model.
     // Make sure you store "user" / "assistant" in sender_type.
-    const historyAsInput = previousMessages.map((msg) => ({
-      role: msg.sender_type, // "user" or "assistant"
-      content: msg.content,
-    }));
+    const historyAsInput = previousMessages.map(formatMessageForModel);
 
-    // Add the latest user message explicitly at the end
-    // historyAsInput.push({
-    //   role: "user",
-    //   content: userMessage.trim(),
-    // });
+    // Ensure the latest user message (including file text) is present.
+    // In most cases it is already in DB, but we overwrite/push for correctness.
+    const latestUserText =
+      typeof userMessage === "string" ? userMessage.trim() : "";
+    if (latestUserText) {
+      const last = historyAsInput[historyAsInput.length - 1];
+      if (last && last.role === "user") {
+        last.content = latestUserText;
+      } else {
+        historyAsInput.push({ role: "user", content: latestUserText });
+      }
+    }
 
     // Call the newer Responses API
     const response = await client.responses.create({

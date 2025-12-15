@@ -1,4 +1,4 @@
-// Central export point for all API modules
+//imort all endpoints here
 export { default as authApi } from "./authApi";
 export { default as fileApi } from "./fileApi";
 export { default as categoryApi } from "./categoryApi";
