@@ -3,15 +3,28 @@ const mongoose = require("mongoose");
 // schema design
 const activitySchema = new mongoose.Schema(
   {
+    lesson_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Lesson",
+      required: true,
+    },
     title: {
       type: String,
       required: true,
+      minlength: 1,
+      maxlength: 40,
+      trim: true,
     },
     type: {
       type: String,
-      enum: ["multiple-choise", "flashcards", "text"],
+      enum: ["multiple-choice", "flashcards", "text"],
       required: true,
       default: "text",
+    },
+    question_count: {
+      type: Number,
+      required: true,
+      min: 1,
     },
     max_score: {
       type: Number,

@@ -1,5 +1,6 @@
 const Message = require("../../models/chat/message");
 const Lesson = require("../../models/chat/lesson");
+const Activity = require("../../models/activities/activity");
 const { generateAIResponse } = require("../../utils/assistantInstructions");
 const { extractFileText } = require("../../utils/file_uploads/extractFileText");
 
@@ -28,6 +29,10 @@ const getMessagesByLessonId = async (req, res) => {
       .sort({ createdAt: 1 })
       .lean();
 
+    const activities = await Activity.find({ lesson_id: lessonId })
+      .sort({ createdAt: 1 })
+      .lean();
+
     console.log("Fetched messages:", messages);
 
     return res.status(200).json({
@@ -36,6 +41,7 @@ const getMessagesByLessonId = async (req, res) => {
       data: {
         lesson,
         messages,
+        activities,
       },
     });
   } catch (error) {

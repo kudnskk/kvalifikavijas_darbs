@@ -72,6 +72,7 @@ const fileRouter = require("./routers/files/fileRouter");
 const categoryRouter = require("./routers/chat/categoryRouter");
 const lessonRouter = require("./routers/chat/lessonRouter");
 const messageRouter = require("./routers/chat/messageRouter");
+const activityRouter = require("./routers/activities/activityRouter");
 // morgan routes view log
 if (app.get("env") === "development") {
   app.use(morgan("tiny"));
@@ -91,6 +92,7 @@ app.use("/api/files", fileRouter); // Protected routes - file upload/management
 app.use("/api/categories", categoryRouter); // Protected routes - categories and lessons
 app.use("/api/lessons", lessonRouter); // Protected routes - lesson management
 app.use("/api/messages", messageRouter); // Protected routes - lesson messages
+app.use("/api/activities", activityRouter); // Protected routes - activities
 
 // server welcome response
 app.get("/", (req, res) => {

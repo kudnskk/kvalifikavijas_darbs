@@ -16,13 +16,14 @@ import {
   ModalCloseButton,
   ModalBody,
   useDisclosure,
+  IconButton,
 } from "@chakra-ui/react";
 import { useParams } from "react-router-dom";
 import ChatFileDropzone from "./components/ChatFileDropzone";
 import { messageApi } from "../../api";
 import socket from "../../api/socket";
-import { FaFilePdf, FaFileWord, FaFileAlt } from "react-icons/fa";
-
+import { FaFilePdf, FaFileWord, FaFileAlt, FaPlus } from "react-icons/fa";
+import CreateActiviyModal from "./components/CreateActivityModal";
 const transformDate = (dateString) => {
   const date = new Date(dateString);
   return date.toLocaleTimeString("en-GB", {
@@ -65,6 +66,11 @@ const Chat = () => {
     isOpen: isFileViewerOpen,
     onOpen: onFileViewerOpen,
     onClose: onFileViewerClose,
+  } = useDisclosure();
+  const {
+    isOpen: isCreateActivityModalOpen,
+    onOpen: onCreateActivityModalOpen,
+    onClose: onCreateActivityModalClose,
   } = useDisclosure();
   const [fileViewerData, setFileViewerData] = useState(null);
 
@@ -365,13 +371,25 @@ const Chat = () => {
               )}
             </Flex>
             <Flex align={"center"}>
-              <ChatFileDropzone
-                onFilesSelected={(files) => {
-                  setAttachedFiles(files);
-                  setFile(files[0] ?? null);
-                }}
-                files={attachedFiles}
-              />
+              <Box>
+                <IconButton
+                  icon={<FaPlus />}
+                  size="md"
+                  variant="ghost"
+                  color="gray.400"
+                  _hover={{ color: "#3B82F6", bg: "#1E293B" }}
+                  cursor="pointer"
+                  onClick={onCreateActivityModalOpen}
+                  mb={2}
+                />
+                <ChatFileDropzone
+                  onFilesSelected={(files) => {
+                    setAttachedFiles(files);
+                    setFile(files[0] ?? null);
+                  }}
+                  files={attachedFiles}
+                />
+              </Box>
 
               <Textarea
                 color="white"
@@ -402,6 +420,15 @@ const Chat = () => {
           <Center h="100%">Select a lesson in the left sidebar.</Center>
         )}
       </Box>
+
+      <CreateActiviyModal
+        isOpen={isCreateActivityModalOpen}
+        onClose={onCreateActivityModalClose}
+        lessonId={id}
+        onActivityCreated={() => {
+          getAllMessagesFunc();
+        }}
+      />
 
       <Modal isOpen={isFileViewerOpen} onClose={onFileViewerClose} size="xl">
         <ModalOverlay />
