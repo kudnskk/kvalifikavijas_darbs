@@ -49,6 +49,7 @@ const MainLayout = ({ children }) => {
   const [expandedCategories, setExpandedCategories] = useState({});
   const [selectedCategoryForLesson, setSelectedCategoryForLesson] =
     useState(null);
+  const [selectedLesson, setSelectedLesson] = useState("");
   const sidebarWidth = 275;
   const toast = useToast();
   const navigate = useNavigate();
@@ -215,7 +216,15 @@ const MainLayout = ({ children }) => {
                             bg: "#334155",
                             transition: "all 0.2s",
                           }}
-                          onClick={() => navigate(`/lesson/${lesson._id}`)}
+                          bgColor={
+                            selectedLesson === lesson._id
+                              ? "#495974"
+                              : "transparent"
+                          }
+                          onClick={() => {
+                            setSelectedLesson(lesson._id);
+                            navigate(`/lesson/${lesson._id}`);
+                          }}
                           justify="space-between"
                           align="center"
                         >
@@ -264,12 +273,18 @@ const MainLayout = ({ children }) => {
                   borderLeftColor={lesson?.category_id?.color || "gray"}
                   borderRadius="md"
                   cursor="pointer"
+                  bgColor={
+                    selectedLesson === lesson._id ? "#495974" : "transparent"
+                  }
                   _hover={{
                     bg: "#475569",
                     transform: "translateX(4px)",
                     transition: "all 0.2s",
                   }}
-                  onClick={() => navigate(`/lesson/${lesson._id}`)}
+                  onClick={() => {
+                    setSelectedLesson(lesson._id);
+                    navigate(`/lesson/${lesson._id}`);
+                  }}
                 >
                   <Flex align="center" justify={"space-between"}>
                     <Text color="white" fontWeight="semibold" mb={1}>

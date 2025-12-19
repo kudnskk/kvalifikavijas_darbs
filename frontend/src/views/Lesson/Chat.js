@@ -6,6 +6,7 @@ import {
   VStack,
   Textarea,
   Text,
+  Heading,
   Center,
   Divider,
   useToast,
@@ -105,6 +106,7 @@ const Chat = () => {
     try {
       const response = await messageApi.getMessagesByLessonId(id);
       setMessages(response.data.messages);
+      setSelectedLesson(response.data.lesson.title);
     } catch (error) {
       toast({
         title: "Error",
@@ -119,7 +121,6 @@ const Chat = () => {
   };
 
   useEffect(() => {
-    setSelectedLesson(id);
     if (id) {
       getAllMessagesFunc();
 
@@ -237,6 +238,7 @@ const Chat = () => {
   return (
     <Box bg="#0F172A" height="calc(100vh - 60px)">
       {/* Chat Section */}
+
       <Box
         padding={4}
         display="flex"
@@ -246,6 +248,19 @@ const Chat = () => {
       >
         {selectedLesson ? (
           <>
+            <Box pb={1} borderBottom="1px solid" borderColor="#334155">
+              <Text
+                fontSize="xs"
+                color="gray.400"
+                letterSpacing="0.12em"
+                textTransform="uppercase"
+              >
+                Lesson
+              </Text>
+              <Heading size="md" color="white" noOfLines={1}>
+                {selectedLesson}
+              </Heading>
+            </Box>
             <Box
               flex="1"
               overflowY="auto"
