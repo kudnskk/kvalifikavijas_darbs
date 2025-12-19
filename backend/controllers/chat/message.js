@@ -33,6 +33,28 @@ const getMessagesByLessonId = async (req, res) => {
       .sort({ createdAt: 1 })
       .lean();
 
+    // Attach activity metadata onto activity-type messages (derived from Activity.message_id)
+    const activityByMessageId = activities.reduce((acc, activity) => {
+      if (activity?.message_id) {
+        acc[String(activity.message_id)] = activity;
+      }
+      return acc;
+    }, {});
+
+    const hydratedMessages = messages.map((m) => {
+      if (m?.type !== "activity") return m;
+
+      const activity = activityByMessageId[String(m._id)];
+      if (!activity) return m;
+
+      return {
+        ...m,
+        activity_id: activity._id,
+        activity_title: activity.title,
+        activity_type: activity.type,
+      };
+    });
+
     console.log("Fetched messages:", messages);
 
     return res.status(200).json({
@@ -40,7 +62,7 @@ const getMessagesByLessonId = async (req, res) => {
       message: "Messages fetched successfully",
       data: {
         lesson,
-        messages,
+        messages: hydratedMessages,
         activities,
       },
     });
