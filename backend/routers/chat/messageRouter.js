@@ -13,5 +13,4 @@ router.get(
   getMessagesByLessonId,
 );
 router.post("/create-message", protect, upload.single("file"), createMessage);
-
 module.exports = router;

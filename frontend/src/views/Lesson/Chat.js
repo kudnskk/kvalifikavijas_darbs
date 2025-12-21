@@ -432,7 +432,6 @@ const Chat = () => {
                     <MenuButton
                       as={IconButton}
                       icon={<FaBars />}
-                      aria-label="Activity menu"
                       size="md"
                       variant="ghost"
                       color="gray.400"

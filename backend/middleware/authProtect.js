@@ -19,7 +19,6 @@ exports.protect = async (req, res, next) => {
 
     if (decoded?.id) {
       const user = await User.findOne({ _id: decoded.id });
-      // eslint-disable-next-line
       if (!!user) {
         res.locals.user = { id: user._id, role: user.role, email: user.email };
         next();

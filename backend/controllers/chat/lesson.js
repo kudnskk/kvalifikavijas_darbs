@@ -6,7 +6,6 @@ const createLesson = async (req, res) => {
     const userId = res.locals.user.id;
     const { title, category_id } = req.body;
 
-    // Validate required fields
     if (!title || !title.trim()) {
       return res.status(400).json({
         status: false,
@@ -14,7 +13,6 @@ const createLesson = async (req, res) => {
       });
     }
 
-    // If category_id is provided, verify it exists and belongs to the user
     if (category_id) {
       const category = await Category.findOne({
         _id: category_id,
@@ -29,7 +27,6 @@ const createLesson = async (req, res) => {
       }
     }
 
-    // Create new lesson
     const newLesson = new Lesson({
       title: title.trim(),
       category_id: category_id || null,
@@ -40,7 +37,6 @@ const createLesson = async (req, res) => {
 
     await newLesson.save();
 
-    // If category exists, add lesson to category's lessons array
     if (category_id) {
       await Category.findByIdAndUpdate(category_id, {
         $push: { lessons: newLesson._id },

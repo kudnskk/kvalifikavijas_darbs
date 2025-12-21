@@ -4,7 +4,12 @@ const Activity = require("../../models/activities/activity");
 const Message = require("../../models/chat/message");
 const ActivityQuestion = require("../../models/activities/activity_question");
 const ActivityAnswer = require("../../models/activities/activity_answer");
-const { generateActivityData } = require("../../utils/assistantInstructions");
+const ActivityAttempt = require("../../models/attempt/activity_attempt");
+const ActivityAttemptAnswer = require("../../models/attempt/activity_attempt_answer");
+const {
+  generateActivityData,
+  gradeFreeTextAnswers,
+} = require("../../utils/assistantInstructions");
 
 const createActivity = async (req, res) => {
   try {
@@ -69,8 +74,6 @@ const createActivity = async (req, res) => {
       return "text";
     };
 
-    // Best-effort dedupe: if the user retries the same creation within a short window
-    // (e.g. because the request timed out), return the already-created activity message.
     const trimmedTitleForDedupe = String(title || "").trim();
     const trimmedDescriptionForDedupe = String(description || "").trim();
     const requestedDbType = mapActivityTypeToDb(modelRequestedType);
@@ -95,7 +98,6 @@ const createActivity = async (req, res) => {
         const expectedContent =
           trimmedDescriptionForDedupe || trimmedTitleForDedupe;
         if (existingMessage && existingMessage.type === "activity") {
-          // Only dedupe if the chat description matches (so we don't block intentional rapid creations).
           if (String(existingMessage.content || "") === expectedContent) {
             return res.status(200).json({
               status: true,
@@ -112,7 +114,6 @@ const createActivity = async (req, res) => {
       }
     }
 
-    // Verify lesson exists and belongs to user
     const lesson = await Lesson.findOne({ _id: lesson_id, user_id: userId });
     if (!lesson) {
       return res.status(404).json({
@@ -163,7 +164,6 @@ const createActivity = async (req, res) => {
       trimmedTitle ||
       `${String(modelActivityType || type || "activity").replaceAll("_", " ")}`;
 
-    // What gets displayed in chat for the activity message.
     const activityChatDescription = trimmedDescription || activityTitle;
 
     const dbActivityType = mapActivityTypeToDb(modelActivityType);
@@ -188,7 +188,6 @@ const createActivity = async (req, res) => {
 
     try {
       await session.withTransaction(async () => {
-        // 1) Create a chat message of type 'activity'. Store the activity description in content.
         createdMessage = new Message({
           content: activityChatDescription,
           type: "activity",
@@ -204,7 +203,6 @@ const createActivity = async (req, res) => {
           { session },
         );
 
-        // 2) Create Activity referencing message_id
         createdActivity = new Activity({
           lesson_id,
           title: activityTitle,
@@ -216,7 +214,6 @@ const createActivity = async (req, res) => {
         });
         await createdActivity.save({ session });
 
-        // 3) Persist questions + answers
         const items = modelItems;
 
         if (items.length !== parsedQuestionCount) {
@@ -329,7 +326,6 @@ const createActivity = async (req, res) => {
       activity_type: dbActivityType,
       activity_title: activityTitle,
     };
-    // Emit after successful commit (avoid sending event for rolled-back data)
     // if (io && newMessage) {
     //   io.to(String(lesson_id)).emit("new_message", newMessage);
     // }
@@ -360,7 +356,6 @@ const getActivitiesByLessonId = async (req, res) => {
     const userId = res.locals.user.id;
     const { lessonId } = req.params;
 
-    // Verify lesson exists and belongs to user
     const lesson = await Lesson.findOne({ _id: lessonId, user_id: userId });
     if (!lesson) {
       return res.status(404).json({
@@ -404,7 +399,6 @@ const getActivityById = async (req, res) => {
       ? await Message.findById(activity.message_id).lean()
       : null;
 
-    // Verify lesson exists and belongs to user
     const lesson = await Lesson.findOne({
       _id: activity.lesson_id,
       user_id: userId,
@@ -463,8 +457,193 @@ const getActivityById = async (req, res) => {
   }
 };
 
+const submitActivityAttempt = async (req, res) => {
+  try {
+    const userId = res.locals.user.id;
+    const { activityId } = req.params;
+    const bodyAnswers = Array.isArray(req.body?.answers)
+      ? req.body.answers
+      : [];
+
+    const activity = await Activity.findById(activityId).lean();
+    if (!activity) {
+      return res
+        .status(404)
+        .json({ status: false, message: "Activity not found" });
+    }
+
+    const lesson = await Lesson.findOne({
+      _id: activity.lesson_id,
+      user_id: userId,
+    }).lean();
+    if (!lesson) {
+      return res.status(404).json({
+        status: false,
+        message: "Lesson not found or does not belong to user",
+      });
+    }
+
+    const questions = await ActivityQuestion.find({ activity_id: activityId })
+      .sort({ createdAt: 1 })
+      .lean();
+
+    if (!questions.length) {
+      return res
+        .status(400)
+        .json({ status: false, message: "Activity has no questions" });
+    }
+
+    const questionIds = questions.map((q) => String(q._id));
+    const answers = await ActivityAnswer.find({
+      question_id: { $in: questionIds },
+    }).lean();
+    const answersByQuestionId = answers.reduce((acc, a) => {
+      const key = String(a.question_id);
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(a);
+      return acc;
+    }, {});
+
+    const byQid = bodyAnswers.reduce((acc, a) => {
+      const qid = String(a?.question_id || "");
+      if (!qid) return acc;
+      acc[qid] = a;
+      return acc;
+    }, {});
+
+    const activityType = activity.type; // 'multiple-choice' | 'text' | 'flashcards'
+    if (activityType !== "multiple-choice" && activityType !== "text") {
+      return res
+        .status(400)
+        .json({ status: false, message: "Unsupported activity type" });
+    }
+
+    let perQuestionResults = [];
+    if (activityType === "multiple-choice") {
+      perQuestionResults = questions.map((q) => {
+        const qid = String(q._id);
+        const submitted = byQid[qid];
+        const selectedIds = Array.isArray(submitted?.selected_answer_ids)
+          ? submitted.selected_answer_ids.map(String)
+          : [];
+
+        const correctIds = (answersByQuestionId[qid] || [])
+          .filter((a) => a.is_correct)
+          .map((a) => String(a._id))
+          .sort();
+
+        const selectedSorted = [...new Set(selectedIds)].sort();
+
+        const isCorrect =
+          correctIds.length > 0 &&
+          selectedSorted.length === correctIds.length &&
+          selectedSorted.every((id, i) => id === correctIds[i]);
+
+        return {
+          question_id: qid,
+          is_correct: isCorrect,
+          selected_answer_ids: selectedSorted,
+          text_answer: "",
+        };
+      });
+    }
+
+    if (activityType === "text") {
+      const gradingItems = questions.map((q) => {
+        const qid = String(q._id);
+        const submitted = byQid[qid];
+        return {
+          question_id: qid,
+          question: String(q.question || ""),
+          user_answer: String(submitted?.text_answer || "").trim(),
+        };
+      });
+
+      const graded = await gradeFreeTextAnswers({
+        lessonId: activity.lesson_id,
+        items: gradingItems,
+      });
+      if (graded.status !== "ok") {
+        return res.status(400).json({
+          status: false,
+          message:
+            graded?.error?.message || "Failed to grade free-text answers",
+        });
+      }
+
+      const gradedById = graded.results.reduce((acc, r) => {
+        acc[String(r.question_id)] = Boolean(r.is_correct);
+        return acc;
+      }, {});
+
+      perQuestionResults = questions.map((q) => {
+        const qid = String(q._id);
+        const submitted = byQid[qid];
+        const textAnswer = String(submitted?.text_answer || "");
+        return {
+          question_id: qid,
+          is_correct: Boolean(gradedById[qid]),
+          selected_answer_ids: [],
+          text_answer: textAnswer,
+        };
+      });
+    }
+
+    const score = perQuestionResults.reduce(
+      (sum, r) => sum + (r.is_correct ? 1 : 0),
+      0,
+    );
+
+    const session = await mongoose.startSession();
+    let createdAttempt;
+    try {
+      await session.withTransaction(async () => {
+        createdAttempt = new ActivityAttempt({
+          score,
+          activity_id: activityId,
+        });
+        await createdAttempt.save({ session });
+
+        const attemptAnswerDocs = perQuestionResults.map((r) => ({
+          is_correct: r.is_correct,
+          text_answer: typeof r.text_answer === "string" ? r.text_answer : "",
+          activity_attempt_id: createdAttempt._id,
+          activity_answer_id: Array.isArray(r.selected_answer_ids)
+            ? r.selected_answer_ids
+            : [],
+          activity_question_id: r.question_id,
+        }));
+
+        await ActivityAttemptAnswer.insertMany(attemptAnswerDocs, { session });
+      });
+    } finally {
+      await session.endSession();
+    }
+
+    return res.status(201).json({
+      status: true,
+      message: "Attempt submitted",
+      data: {
+        attempt: {
+          _id: createdAttempt._id,
+          score,
+          activity_id: activityId,
+        },
+        results: perQuestionResults,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: false,
+      message: "Failed to submit attempt",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   createActivity,
   getActivitiesByLessonId,
   getActivityById,
+  submitActivityAttempt,
 };

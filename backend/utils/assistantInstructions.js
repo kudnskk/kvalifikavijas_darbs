@@ -2,7 +2,7 @@ const OpenAI = require("openai");
 require("dotenv").config();
 const Message = require("../models/chat/message");
 const Lesson = require("../models/chat/lesson");
-// Initialize OpenAI client once
+
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
   timeout: 45000,
@@ -31,7 +31,7 @@ const formatMessageForModel = (msg) => {
 
   if (!hasFile) {
     return {
-      role: msg.sender_type, // "user" or "assistant"
+      role: msg.sender_type,
       content: baseText,
     };
   }
@@ -202,6 +202,158 @@ const validateStructuredActivityOutput = (out, expectedType, expectedCount) => {
 
   return out;
 };
+
+const freeTextGradingJsonSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    status: { type: "string", enum: ["ok", "error"] },
+    error: {
+      type: ["object", "null"],
+      additionalProperties: false,
+      properties: {
+        message: { type: "string" },
+      },
+      required: ["message"],
+    },
+    results: {
+      type: ["array", "null"],
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          question_id: { type: "string" },
+          is_correct: { type: "boolean" },
+        },
+        required: ["question_id", "is_correct"],
+      },
+    },
+  },
+  required: ["status", "error", "results"],
+};
+
+const gradeFreeTextAnswers = async ({ lessonId, items }) => {
+  const lesson = await Lesson.findById(lessonId).lean();
+  if (!lesson) {
+    return {
+      status: "error",
+      error: { message: "Lesson not found" },
+      results: null,
+    };
+  }
+
+  const safeItems = Array.isArray(items) ? items : [];
+  if (!safeItems.length) {
+    return {
+      status: "error",
+      error: { message: "No free-text answers provided" },
+      results: null,
+    };
+  }
+
+  const previousMessages = await Message.find({ lesson_id: lessonId })
+    .sort({ createdAt: -1 })
+    .limit(20)
+    .lean();
+  previousMessages.reverse();
+
+  const historyAsInput = previousMessages.map(formatMessageForModel);
+
+  const gradingPrompt = `You are grading free-text answers for the lesson: "${
+    lesson.title
+  }".
+
+Return JSON strictly matching the schema.
+
+Rules:
+- For each item, decide if the user's answer is correct enough.
+- Be reasonably strict but fair.
+- Output results for every provided question_id.
+- Do not include explanations.
+
+Items:\n${JSON.stringify(
+    safeItems.map((it) => ({
+      question_id: String(it.question_id),
+      question: String(it.question || ""),
+      user_answer: String(it.user_answer || ""),
+    })),
+    null,
+    2,
+  )}`;
+
+  let response;
+  try {
+    response = await withTimeout(
+      client.responses.create({
+        model: "gpt-5-mini",
+        instructions: "Grade each free-text answer as correct/incorrect.",
+        input: [...historyAsInput, { role: "user", content: gradingPrompt }],
+        text: {
+          format: {
+            type: "json_schema",
+            name: "free_text_grading",
+            strict: true,
+            schema: freeTextGradingJsonSchema,
+          },
+        },
+        max_output_tokens: 1024,
+        reasoning: { effort: "low" },
+      }),
+      45000,
+      "OpenAI free-text grading",
+    );
+  } catch (error) {
+    console.error("Free-text grading failed:", error?.message || error);
+    return {
+      status: "error",
+      error: {
+        message:
+          error?.code === "ETIMEDOUT"
+            ? "Free-text grading took too long. Please try again."
+            : "Failed to grade free-text answers",
+      },
+      results: null,
+    };
+  }
+
+  try {
+    const out = JSON.parse(response.output_text);
+    if (!out || (out.status !== "ok" && out.status !== "error")) {
+      return {
+        status: "error",
+        error: { message: "Model returned invalid grading status" },
+        results: null,
+      };
+    }
+
+    if (out.status === "error") {
+      return {
+        status: "error",
+        error: { message: out?.error?.message || "Grading failed" },
+        results: null,
+      };
+    }
+
+    if (
+      !Array.isArray(out.results) ||
+      out.results.length !== safeItems.length
+    ) {
+      return {
+        status: "error",
+        error: { message: "Model returned incomplete grading results" },
+        results: null,
+      };
+    }
+
+    return out;
+  } catch (e) {
+    return {
+      status: "error",
+      error: { message: "Failed to parse grading output as JSON" },
+      results: null,
+    };
+  }
+};
 const getInstructions = (lessonTitle, type) => {
   const text =
     type === "chat"
@@ -240,20 +392,15 @@ const generateAIResponse = async (userMessage, lessonId, userId) => {
       return;
     }
 
-    // Get last 20 messages for this lesson (newest -> oldest, then reverse)
     const previousMessages = await Message.find({ lesson_id: lessonId })
       .sort({ createdAt: -1 }) // newest first
       .limit(20)
       .lean();
 
-    previousMessages.reverse(); // oldest -> newest for the model
+    previousMessages.reverse();
 
-    // Map DB messages to chat-style roles for the model.
-    // Make sure you store "user" / "assistant" in sender_type.
     const historyAsInput = previousMessages.map(formatMessageForModel);
 
-    // Ensure the latest user message (including file text) is present.
-    // In most cases it is already in DB, but we overwrite/push for correctness.
     const latestUserText =
       typeof userMessage === "string" ? userMessage.trim() : "";
     if (latestUserText) {
@@ -265,37 +412,33 @@ const generateAIResponse = async (userMessage, lessonId, userId) => {
       }
     }
 
-    // Call the newer Responses API
     const response = await client.responses.create({
       model: "gpt-5-mini",
       instructions: getInstructions(lesson.title, "chat"),
-      input: historyAsInput, // chat-style messages
+      input: historyAsInput,
       max_output_tokens: 2048,
       reasoning: { effort: "low" },
     });
 
-    // Convenient shortcut: combined text from the response
     const aiResponse = response.output_text;
     console.log("AI Response:", aiResponse);
 
-    // Save AI response as a message
     const aiMessage = new Message({
       content: aiResponse,
       type: "text",
-      sender_type: "assistant", // important to match roles we send
+      sender_type: "assistant",
       lesson_id: lessonId,
       user_id: userId,
     });
 
     await aiMessage.save();
 
-    // Link it to the lesson
     await Lesson.findByIdAndUpdate(lessonId, {
       $push: { messages: aiMessage._id },
     });
 
     console.log("AI response saved successfully");
-    return aiMessage; // handy for sockets later
+    return aiMessage;
   } catch (error) {
     console.error("Error generating AI response:", error.message);
     throw error;
@@ -388,4 +531,8 @@ Return the JSON envelope strictly. The items array MUST contain exactly itemCoun
   }
 };
 
-module.exports = { generateAIResponse, generateActivityData };
+module.exports = {
+  generateAIResponse,
+  generateActivityData,
+  gradeFreeTextAnswers,
+};

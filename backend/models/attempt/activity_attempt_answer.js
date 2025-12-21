@@ -9,10 +9,11 @@ const activityAttemptAnswerSchema = new mongoose.Schema(
     },
     text_answer: {
       type: String,
-      minLenfgth: 1,
+      minLength: 0,
       maxlength: 1000,
       trim: true,
-      required: true,
+      default: "",
+      required: false,
     },
     activity_attempt_id: {
       type: mongoose.Schema.Types.ObjectId,

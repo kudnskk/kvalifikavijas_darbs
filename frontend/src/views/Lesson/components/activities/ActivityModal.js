@@ -4,6 +4,7 @@ import {
   Button,
   Divider,
   Flex,
+  IconButton,
   Modal,
   ModalBody,
   ModalCloseButton,
@@ -17,12 +18,30 @@ import {
   useToast,
 } from "@chakra-ui/react";
 
+import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
+
 import { activityApi } from "../../../../api";
+
+import MultipleChoiceActivityRunner from "./MultipleChoiceActivityRunner";
+import FreeTextActivityRunner from "./FreeTextActivityRunner";
+import FlashcardsActivityRunner from "./FlashcardsActivityRunner";
 
 export const ActivityModal = ({ isOpen, onClose, activityId }) => {
   const toast = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [activityData, setActivityData] = useState(null);
+  const [isStarted, setIsStarted] = useState(false);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [attemptResult, setAttemptResult] = useState(null);
+
+  // Stored in a backend-friendly shape (question_id -> answer)
+  const [
+    multipleChoiceAnswersByQuestionId,
+    setMultipleChoiceAnswersByQuestionId,
+  ] = useState({});
+  const [freeTextAnswersByQuestionId, setFreeTextAnswersByQuestionId] =
+    useState({});
 
   const activity = activityData?.activity;
   const questions = Array.isArray(activityData?.questions)
@@ -33,6 +52,64 @@ export const ActivityModal = ({ isOpen, onClose, activityId }) => {
     if (!activity) return "Activity";
     return activity.title || "Activity";
   }, [activity]);
+
+  const activityType = activity?.type;
+  const isMultipleChoice = activityType === "multiple-choice";
+  const isFreeText = activityType === "text";
+  const isFlashcards = activityType === "flashcards";
+
+  const resultsByQuestionId = useMemo(() => {
+    const results = Array.isArray(attemptResult?.results)
+      ? attemptResult.results
+      : [];
+    return results.reduce((acc, r) => {
+      acc[String(r.question_id)] = r;
+      return acc;
+    }, {});
+  }, [attemptResult]);
+
+  const questionCount = questions.length;
+  const clampedIndex = Math.min(
+    Math.max(currentQuestionIndex, 0),
+    Math.max(questionCount - 1, 0)
+  );
+  const currentQuestion = questionCount ? questions[clampedIndex] : null;
+
+  const submissionDraft = useMemo(() => {
+    // This is intentionally not sent anywhere yet.
+    // It collects all user responses in a shape ready for a backend "check" endpoint.
+    const answerPayload = questions.map((q) => {
+      const qid = String(q._id);
+      if (isMultipleChoice) {
+        return {
+          question_id: qid,
+          selected_answer_ids: multipleChoiceAnswersByQuestionId[qid] || [],
+        };
+      }
+      if (isFreeText) {
+        return {
+          question_id: qid,
+          text_answer: freeTextAnswersByQuestionId[qid] || "",
+        };
+      }
+      // flashcards: no answers tracked
+      return { question_id: qid };
+    });
+
+    return {
+      activity_id: activityId,
+      activity_type: activityType,
+      answers: answerPayload,
+    };
+  }, [
+    activityId,
+    activityType,
+    freeTextAnswersByQuestionId,
+    isFreeText,
+    isMultipleChoice,
+    multipleChoiceAnswersByQuestionId,
+    questions,
+  ]);
 
   useEffect(() => {
     if (!isOpen || !activityId) return;
@@ -68,14 +145,70 @@ export const ActivityModal = ({ isOpen, onClose, activityId }) => {
 
   const handleClose = () => {
     setActivityData(null);
+    setIsStarted(false);
+    setCurrentQuestionIndex(0);
+    setMultipleChoiceAnswersByQuestionId({});
+    setFreeTextAnswersByQuestionId({});
+    setAttemptResult(null);
+    setIsSubmitting(false);
     onClose();
+  };
+
+  const handleStart = () => {
+    if (!activity || !questionCount) return;
+    setIsStarted(true);
+    setCurrentQuestionIndex(0);
+  };
+
+  const goPrev = () => {
+    setCurrentQuestionIndex((idx) => Math.max(idx - 1, 0));
+  };
+
+  const goNext = () => {
+    setCurrentQuestionIndex((idx) => Math.min(idx + 1, questionCount - 1));
+  };
+
+  const handleFinish = async () => {
+    if (!activityId || !activityType) return;
+    if (isFlashcards) return;
+    if (attemptResult || isSubmitting) return;
+
+    setIsSubmitting(true);
+    try {
+      const response = await activityApi.submitAttempt(activityId, {
+        answers: submissionDraft.answers,
+      });
+      if (!response?.status) {
+        throw new Error(response?.message || "Failed to submit attempt");
+      }
+      setAttemptResult(response.data);
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: err?.message || "Failed to submit attempt",
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <Modal isOpen={isOpen} onClose={handleClose} size="xl">
       <ModalOverlay />
       <ModalContent bg="#1E293B" borderColor="#334155" borderWidth="1px">
-        <ModalHeader color="white">{headerTitle}</ModalHeader>
+        <ModalHeader color="white">
+          <Flex align="center" justify="space-between" gap={3}>
+            <Text noOfLines={1}>{headerTitle}</Text>
+            {isStarted && questionCount > 0 && (
+              <Text color="gray.300" fontSize="sm" whiteSpace="nowrap">
+                {`Question ${clampedIndex + 1} / ${questionCount}`}
+              </Text>
+            )}
+          </Flex>
+        </ModalHeader>
         <ModalCloseButton color="white" />
         <ModalBody>
           {isLoading ? (
@@ -84,7 +217,7 @@ export const ActivityModal = ({ isOpen, onClose, activityId }) => {
             </Flex>
           ) : !activity ? (
             <Text color="gray.400">No activity loaded.</Text>
-          ) : (
+          ) : !isStarted ? (
             <VStack align="stretch" spacing={4}>
               <Box>
                 <Text color="gray.300" fontSize="sm">
@@ -167,6 +300,94 @@ export const ActivityModal = ({ isOpen, onClose, activityId }) => {
                 </VStack>
               </Box>
             </VStack>
+          ) : !currentQuestion ? (
+            <Text color="gray.400">No questions available.</Text>
+          ) : (
+            <Box>
+              {isMultipleChoice && (
+                <MultipleChoiceActivityRunner
+                  question={currentQuestion}
+                  value={
+                    multipleChoiceAnswersByQuestionId[
+                      String(currentQuestion._id)
+                    ] || []
+                  }
+                  isReadOnly={Boolean(attemptResult) || isSubmitting}
+                  result={resultsByQuestionId[String(currentQuestion._id)]}
+                  onChange={(nextSelectedIds) => {
+                    if (attemptResult || isSubmitting) return;
+                    setMultipleChoiceAnswersByQuestionId((prev) => ({
+                      ...prev,
+                      [String(currentQuestion._id)]: nextSelectedIds,
+                    }));
+                  }}
+                />
+              )}
+
+              {isFreeText && (
+                <FreeTextActivityRunner
+                  question={currentQuestion}
+                  value={
+                    freeTextAnswersByQuestionId[String(currentQuestion._id)] ||
+                    ""
+                  }
+                  isReadOnly={Boolean(attemptResult) || isSubmitting}
+                  result={resultsByQuestionId[String(currentQuestion._id)]}
+                  onChange={(nextText) => {
+                    if (attemptResult || isSubmitting) return;
+                    setFreeTextAnswersByQuestionId((prev) => ({
+                      ...prev,
+                      [String(currentQuestion._id)]: nextText,
+                    }));
+                  }}
+                />
+              )}
+
+              {isFlashcards && (
+                <FlashcardsActivityRunner question={currentQuestion} />
+              )}
+
+              {!isMultipleChoice && !isFreeText && !isFlashcards && (
+                <Text color="gray.400">Unsupported activity type.</Text>
+              )}
+
+              <Flex align="center" justify="space-between" mt={5}>
+                <IconButton
+                  icon={<FaChevronLeft />}
+                  onClick={goPrev}
+                  isDisabled={clampedIndex <= 0}
+                  variant="ghost"
+                  color="gray.300"
+                  _hover={{ bg: "#334155" }}
+                />
+
+                <Text color="gray.400" fontSize="sm">
+                  {activityType}
+                </Text>
+
+                {clampedIndex >= questionCount - 1 ? (
+                  <Button
+                    bg="#3B82F6"
+                    color="white"
+                    _hover={{ bg: "#2563EB" }}
+                    onClick={handleFinish}
+                    isLoading={isSubmitting}
+                    isDisabled={Boolean(attemptResult) || isSubmitting}
+                  >
+                    Finish
+                  </Button>
+                ) : (
+                  <IconButton
+                    icon={<FaChevronRight />}
+                    onClick={goNext}
+                    isDisabled={clampedIndex >= questionCount - 1}
+                    variant="ghost"
+                    color="gray.300"
+                    _hover={{ bg: "#334155" }}
+                  />
+                )}
+              </Flex>
+            </Box>
           )}
         </ModalBody>
 
@@ -180,17 +401,17 @@ export const ActivityModal = ({ isOpen, onClose, activityId }) => {
           >
             Close
           </Button>
-          <Button
-            bg="#3B82F6"
-            color="white"
-            _hover={{ bg: "#2563EB" }}
-            isDisabled={!activityId || isLoading}
-            onClick={() => {
-              // no functionality for now
-            }}
-          >
-            Start
-          </Button>
+          {!isStarted && (
+            <Button
+              bg="#3B82F6"
+              color="white"
+              _hover={{ bg: "#2563EB" }}
+              isDisabled={!activityId || isLoading || !questionCount}
+              onClick={handleStart}
+            >
+              Start
+            </Button>
+          )}
         </ModalFooter>
       </ModalContent>
     </Modal>

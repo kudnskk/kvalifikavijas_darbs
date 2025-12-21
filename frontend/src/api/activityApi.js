@@ -43,8 +43,24 @@ const activityApi = {
       throw error.response?.data || error.message;
     }
   },
+
+  submitAttempt: async (activityId, payload) => {
+    try {
+      const response = await axiosInstance.post(
+        `activities/submit-attempt/${activityId}`,
+        payload
+      );
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
 };
 
 export default activityApi;
-export const { createActivity, getActivitiesByLessonId, getActivityById } =
-  activityApi;
+export const {
+  createActivity,
+  getActivitiesByLessonId,
+  getActivityById,
+  submitAttempt,
+} = activityApi;

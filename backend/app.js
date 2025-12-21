@@ -16,15 +16,12 @@ const server = http.createServer(app);
 const { Server } = require("socket.io");
 const io = new Server(server, {
   cors: {
-    // In dev, the React dev server can run on a different port (3001, etc.)
-    // or be accessed via 127.0.0.1. Using `true` reflects the request origin.
     origin: process.env.CLIENT_ORIGIN || true,
     methods: ["GET", "POST"],
     credentials: true,
   },
 });
 
-// Socket.IO connection handling
 io.on("connection", (socket) => {
   console.log("A user connected:", socket.id);
 
@@ -38,7 +35,6 @@ io.on("connection", (socket) => {
   });
 });
 
-// Pass io instance to routes
 app.use((req, res, next) => {
   req.io = io;
   next();
@@ -59,12 +55,6 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(compression());
-
-// Ensure uploads directory exists (required for multer diskStorage)
-const uploadsDir = path.join(__dirname, "uploads");
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
 
 // import routes
 const auth = require("./routers/auth/auth");
@@ -103,7 +93,7 @@ app.get("/", (req, res) => {
 });
 
 // multer error handler
-// Proper multer error handler
+
 app.use((error, req, res, next) => {
   if (error instanceof multer.MulterError) {
     if (error.code === "LIMIT_FILE_SIZE") {
@@ -126,7 +116,6 @@ app.use((error, req, res, next) => {
     }
   }
 
-  // Generic error fallback
   return res.status(500).json({
     message: "Something went wrong",
     error: error.message,

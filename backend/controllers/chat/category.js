@@ -6,11 +6,10 @@ const getAllCategoriesAndLessons = async (req, res) => {
   try {
     const userId = res.locals.user.id;
 
-    // Get all categories with their lessons (populate only necessary lesson fields)
     const categoriesData = await Category.find({ user_id: userId })
       .populate({
         path: "lessons",
-        select: "title status createdAt updatedAt", // Only get these fields, not texts/messages
+        select: "title status createdAt updatedAt",
       })
       .lean();
     const categories = categoriesData.map((category) => ({
@@ -47,7 +46,6 @@ const createCategory = async (req, res) => {
     const userId = res.locals.user.id;
     const { title, description, color, icon } = req.body;
 
-    // Validate required fields
     if (!title || !title.trim()) {
       return res.status(400).json({
         status: false,
@@ -55,7 +53,6 @@ const createCategory = async (req, res) => {
       });
     }
 
-    // Create new category
     const newCategory = new Category({
       title: title.trim(),
       description: description?.trim() || "",
