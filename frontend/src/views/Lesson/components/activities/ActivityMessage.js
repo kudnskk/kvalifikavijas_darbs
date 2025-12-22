@@ -5,12 +5,12 @@ import { FaPlay, FaRegStar } from "react-icons/fa";
 
 const ActivityMessage = ({ onOpen, type, title }) => {
   return (
-    <Box bg={"#3d444e"} p={3} borderRadius="md" maxW="30%" mb={2}>
+    <Box bg={"gray.100"} p={3} borderRadius="md" maxW="30%" mb={2}>
       <Flex direction="column" gap={1}>
-        <Text color="gray.200" mb={2}>
+        <Text color="black" mb={2}>
           Title: {title}
         </Text>
-        <Text color="gray.200" mb={2}>
+        <Text color="black" mb={2}>
           Type: {type}
         </Text>
         <Box
@@ -18,7 +18,7 @@ const ActivityMessage = ({ onOpen, type, title }) => {
           cursor="pointer"
           borderRadius="md"
           border="2px solid"
-          borderColor={"#334155"}
+          borderColor={"gray.300"}
           bg={"blue.600"}
           _hover={{ borderColor: "#3B82F6", bg: "blue.500" }}
           transition="all 0.2s"
@@ -28,7 +28,7 @@ const ActivityMessage = ({ onOpen, type, title }) => {
           p={4}
         >
           <Flex direction="column" align="center" gap={2}>
-            <Icon as={FaRegStar} boxSize={6} />
+            <Icon as={FaRegStar} color="gray.200" boxSize={6} />
             <Text
               fontSize="sm"
               fontWeight="medium"

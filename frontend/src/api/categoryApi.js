@@ -27,12 +27,58 @@ const categoryApi = {
     }
   },
 
+  updateCategory: async (categoryId, categoryData) => {
+    try {
+      const response = await axiosInstance.put(
+        `categories/update-category/${categoryId}`,
+        categoryData
+      );
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  deleteCategory: async (categoryId) => {
+    try {
+      const response = await axiosInstance.delete(
+        `categories/delete-category/${categoryId}`
+      );
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
   // Create a new lesson (with optional category_id)
   createLesson: async (lessonData) => {
     try {
       const response = await axiosInstance.post(
         "lessons/create-lesson",
         lessonData
+      );
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  updateLesson: async (lessonId, lessonData) => {
+    try {
+      const response = await axiosInstance.put(
+        `lessons/update-lesson/${lessonId}`,
+        lessonData
+      );
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  deleteLesson: async (lessonId) => {
+    try {
+      const response = await axiosInstance.delete(
+        `lessons/delete-lesson/${lessonId}`
       );
       return response.data;
     } catch (error) {
@@ -55,6 +101,10 @@ export default categoryApi;
 export const {
   getAllCategoriesAndLessons,
   createCategory,
+  updateCategory,
+  deleteCategory,
   createLesson,
+  updateLesson,
+  deleteLesson,
   getAllUserLessons,
 } = categoryApi;

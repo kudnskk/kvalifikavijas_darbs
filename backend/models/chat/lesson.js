@@ -37,6 +37,8 @@ const lessonSchema = new mongoose.Schema(
   },
 );
 
+lessonSchema.index({ user_id: 1, title: 1 }, { unique: true });
+
 const Lesson = mongoose.model("Lesson", lessonSchema);
 
 module.exports = Lesson;

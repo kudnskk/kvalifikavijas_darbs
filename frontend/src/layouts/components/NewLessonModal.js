@@ -16,6 +16,7 @@ import {
   VStack,
 } from "@chakra-ui/react";
 import { categoryApi } from "../../api";
+import { useNavigate } from "react-router-dom";
 
 const NewLessonModal = ({
   isOpen,
@@ -23,52 +24,52 @@ const NewLessonModal = ({
   onLessonCreated,
   categories,
   selectedCategoryId = null,
+  lesson = null,
 }) => {
   const [title, setTitle] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const toast = useToast();
+  const navigate = useNavigate();
 
-  // Set category when modal opens with a pre-selected category
+  // Initialize form when modal opens
   useEffect(() => {
-    if (isOpen && selectedCategoryId) {
-      setCategoryId(selectedCategoryId);
-    }
-  }, [isOpen, selectedCategoryId]);
+    if (!isOpen) return;
 
-  const handleSubmit = async () => {
-    if (!title.trim()) {
-      toast({
-        title: "Validation Error",
-        description: "Lesson title is required",
-        status: "error",
-        duration: 3000,
-        isClosable: true,
-      });
+    if (lesson?._id) {
+      setTitle(lesson?.title || "");
+      setCategoryId(lesson?.category_id?._id || "");
       return;
     }
 
+    setTitle("");
+    setCategoryId(selectedCategoryId || "");
+  }, [isOpen, selectedCategoryId, lesson]);
+
+  const handleSubmit = async () => {
     setIsLoading(true);
     try {
-      const lessonData = {
-        title: title.trim(),
-      };
+      const lessonData = { title: title.trim() };
 
       // Only add category_id if one is selected
       if (categoryId) {
         lessonData.category_id = categoryId;
       }
 
-      const response = await categoryApi.createLesson(lessonData);
+      const response = lesson?._id
+        ? await categoryApi.updateLesson(lesson._id, lessonData)
+        : await categoryApi.createLesson(lessonData);
 
       if (response.status) {
         toast({
           title: "Success",
-          description: "Lesson created successfully",
+          description: response.message || "Success",
           status: "success",
           duration: 3000,
           isClosable: true,
         });
+
+        const newLessonId = response?.data?._id;
 
         // Reset form
         setTitle("");
@@ -80,6 +81,11 @@ const NewLessonModal = ({
         }
 
         onClose();
+
+        // Redirect only after creating a new lesson
+        if (!lesson?._id && newLessonId) {
+          navigate(`/lesson/${newLessonId}`);
+        }
       } else {
         toast({
           title: "Error",
@@ -90,9 +96,11 @@ const NewLessonModal = ({
         });
       }
     } catch (error) {
+      const message =
+        typeof error === "string" ? error : error?.message || "Request failed";
       toast({
         title: "Error",
-        description: error.message || "Failed to create lesson",
+        description: message,
         status: "error",
         duration: 3000,
         isClosable: true,
@@ -112,7 +120,9 @@ const NewLessonModal = ({
     <Modal isOpen={isOpen} onClose={handleClose} size="md">
       <ModalOverlay />
       <ModalContent bg="#1E293B" borderColor="#334155" borderWidth="1px">
-        <ModalHeader color="white">Create New Lesson</ModalHeader>
+        <ModalHeader color="white">
+          {lesson?._id ? "Edit Lesson" : "Create New Lesson"}
+        </ModalHeader>
         <ModalCloseButton color="white" />
         <ModalBody>
           <VStack spacing={4}>
@@ -183,7 +193,7 @@ const NewLessonModal = ({
             onClick={handleSubmit}
             isLoading={isLoading}
           >
-            Create
+            {lesson?._id ? "Save" : "Create"}
           </Button>
         </ModalFooter>
       </ModalContent>

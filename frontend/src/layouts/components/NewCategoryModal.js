@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Modal,
   ModalOverlay,
@@ -19,6 +19,7 @@ import {
   Flex,
   Icon,
   Text,
+  Checkbox,
 } from "@chakra-ui/react";
 import { FaBook, FaLaptopCode, FaCalculator, FaBrain } from "react-icons/fa";
 import { categoryApi } from "../../api";
@@ -37,19 +38,71 @@ const ICONS = [
   { name: "FaBrain", component: FaBrain },
 ];
 
-const NewCategoryModal = ({ isOpen, onClose, onCategoryCreated }) => {
+const NewCategoryModal = ({
+  isOpen,
+  onClose,
+  onCategoryCreated,
+  category,
+  lessons,
+}) => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [selectedColor, setSelectedColor] = useState(COLORS[0].value);
   const [selectedIcon, setSelectedIcon] = useState(ICONS[0].name);
+  const [lessonsToAdd, setLessonsToAdd] = useState([]);
+  const [lessonsToRemove, setLessonsToRemove] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const toast = useToast();
+
+  const isEditMode = !!category;
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    if (category) {
+      setTitle(category?.title || "");
+      setDescription(category?.description || "");
+      setSelectedColor(category?.color || COLORS[0].value);
+      setSelectedIcon(category?.icon || ICONS[0].name);
+      setLessonsToAdd([]);
+      setLessonsToRemove([]);
+      return;
+    }
+
+    setTitle("");
+    setDescription("");
+    setSelectedColor(COLORS[0].value);
+    setSelectedIcon(ICONS[0].name);
+    setLessonsToAdd([]);
+    setLessonsToRemove([]);
+  }, [isOpen, category]);
+
+  const lessonsInCategory = isEditMode ? category?.lessons || [] : [];
+  const uncategorizedLessons = isEditMode
+    ? (lessons || []).filter((l) => !l?.category_id)
+    : [];
+
+  const toggleLessonToAdd = (lessonId) => {
+    setLessonsToAdd((prev) =>
+      prev.includes(lessonId)
+        ? prev.filter((id) => id !== lessonId)
+        : [...prev, lessonId]
+    );
+  };
+
+  const toggleLessonToRemove = (lessonId) => {
+    setLessonsToRemove((prev) =>
+      prev.includes(lessonId)
+        ? prev.filter((id) => id !== lessonId)
+        : [...prev, lessonId]
+    );
+  };
 
   const handleSubmit = async () => {
     if (!title.trim()) {
       toast({
-        title: "Validation Error",
-        description: "Category title is required",
+        title: "Error",
+        description: "Not all required input fields are filled in!",
         status: "error",
         duration: 3000,
         isClosable: true,
@@ -59,29 +112,41 @@ const NewCategoryModal = ({ isOpen, onClose, onCategoryCreated }) => {
 
     setIsLoading(true);
     try {
-      const response = await categoryApi.createCategory({
-        title: title.trim(),
-        description: description.trim(),
-        color: selectedColor,
-        icon: selectedIcon,
-      });
+      let response;
+      if (isEditMode) {
+        response = await categoryApi.updateCategory(category._id, {
+          title: title.trim(),
+          description: description.trim(),
+          color: selectedColor,
+          icon: selectedIcon,
+          addedLessons: lessonsToAdd,
+          removedLessons: lessonsToRemove,
+        });
+      } else {
+        response = await categoryApi.createCategory({
+          title: title.trim(),
+          description: description.trim(),
+          color: selectedColor,
+          icon: selectedIcon,
+        });
+      }
 
       if (response.status) {
         toast({
           title: "Success",
-          description: "Category created successfully",
+          description:
+            response.message ||
+            (isEditMode
+              ? "Category updated successfully! (Kategorija atjaunināta veiksmīgi!)"
+              : "Category created successfully! (Kategorija izveidota veiksmīgi!)"),
           status: "success",
           duration: 3000,
           isClosable: true,
         });
 
-        // Reset form
-        setTitle("");
-        setDescription("");
-        setSelectedColor(COLORS[0].value);
-        setSelectedIcon(ICONS[0].name);
+        setLessonsToAdd([]);
+        setLessonsToRemove([]);
 
-        // Call callback to refresh data
         if (onCategoryCreated) {
           onCategoryCreated();
         }
@@ -97,9 +162,11 @@ const NewCategoryModal = ({ isOpen, onClose, onCategoryCreated }) => {
         });
       }
     } catch (error) {
+      const errorMessage =
+        typeof error === "string" ? error : error?.message || "Failed";
       toast({
         title: "Error",
-        description: error.message || "Failed to create category",
+        description: errorMessage,
         status: "error",
         duration: 3000,
         isClosable: true,
@@ -114,6 +181,8 @@ const NewCategoryModal = ({ isOpen, onClose, onCategoryCreated }) => {
     setDescription("");
     setSelectedColor(COLORS[0].value);
     setSelectedIcon(ICONS[0].name);
+    setLessonsToAdd([]);
+    setLessonsToRemove([]);
     onClose();
   };
 
@@ -121,7 +190,9 @@ const NewCategoryModal = ({ isOpen, onClose, onCategoryCreated }) => {
     <Modal isOpen={isOpen} onClose={handleClose} size="lg">
       <ModalOverlay />
       <ModalContent bg="#1E293B" borderColor="#334155" borderWidth="1px">
-        <ModalHeader color="white">Create New Category</ModalHeader>
+        <ModalHeader color="white">
+          {isEditMode ? "Edit Category" : "Create New Category"}
+        </ModalHeader>
         <ModalCloseButton color="white" />
         <ModalBody>
           <VStack spacing={5} align="stretch">
@@ -233,6 +304,74 @@ const NewCategoryModal = ({ isOpen, onClose, onCategoryCreated }) => {
                 ))}
               </SimpleGrid>
             </FormControl>
+
+            {isEditMode ? (
+              <FormControl>
+                <FormLabel color="gray.200">Lessons</FormLabel>
+                <Flex direction={"column"} gap={2}>
+                  <Box
+                    p={3}
+                    borderRadius="md"
+                    border="1px solid"
+                    borderColor="#334155"
+                    bg="#0F172A"
+                  >
+                    <Text color="gray.300" fontSize="sm" mb={2}>
+                      Remove from this category
+                    </Text>
+                    <VStack align="stretch" spacing={2}>
+                      {lessonsInCategory.length === 0 ? (
+                        <Text color="gray.500" fontSize="sm">
+                          -
+                        </Text>
+                      ) : (
+                        lessonsInCategory.map((l) => (
+                          <Checkbox
+                            key={l._id}
+                            colorScheme="red"
+                            isChecked={lessonsToRemove.includes(l._id)}
+                            onChange={() => toggleLessonToRemove(l._id)}
+                            color="white"
+                          >
+                            {l.title}
+                          </Checkbox>
+                        ))
+                      )}
+                    </VStack>
+                  </Box>
+                  <Box
+                    p={3}
+                    borderRadius="md"
+                    border="1px solid"
+                    borderColor="#334155"
+                    bg="#0F172A"
+                  >
+                    <Text color="gray.300" fontSize="sm" mb={2}>
+                      Add to this category
+                    </Text>
+                    <VStack align="stretch" spacing={2}>
+                      {uncategorizedLessons.length === 0 ? (
+                        <Text color="gray.500" fontSize="sm">
+                          -
+                        </Text>
+                      ) : (
+                        uncategorizedLessons.map((l) => (
+                          <Checkbox
+                            key={l._id}
+                            colorScheme="green"
+                            isChecked={lessonsToAdd.includes(l._id)}
+                            onChange={() => toggleLessonToAdd(l._id)}
+                            color="white"
+                          >
+                            {l.title}
+                          </Checkbox>
+                        ))
+                      )}
+                    </VStack>
+                  </Box>
+                </Flex>
+              </FormControl>
+            ) : null}
           </VStack>
         </ModalBody>
 
@@ -253,7 +392,7 @@ const NewCategoryModal = ({ isOpen, onClose, onCategoryCreated }) => {
             onClick={handleSubmit}
             isLoading={isLoading}
           >
-            Create
+            Save
           </Button>
         </ModalFooter>
       </ModalContent>

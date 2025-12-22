@@ -161,7 +161,13 @@ export const ActivityModal = ({ isOpen, onClose, activityId }) => {
   };
 
   const goPrev = () => {
-    setCurrentQuestionIndex((idx) => Math.max(idx - 1, 0));
+    setCurrentQuestionIndex((idx) => {
+      if (idx <= 0) {
+        setIsStarted(false);
+        return 0;
+      }
+      return idx - 1;
+    });
   };
 
   const goNext = () => {
@@ -196,21 +202,36 @@ export const ActivityModal = ({ isOpen, onClose, activityId }) => {
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} size="xl">
+    <Modal
+      isOpen={isOpen}
+      onClose={handleClose}
+      size="4xl"
+      scrollBehavior="inside"
+    >
       <ModalOverlay />
-      <ModalContent bg="#1E293B" borderColor="#334155" borderWidth="1px">
+      <ModalContent
+        bg="#1E293B"
+        borderColor="#334155"
+        borderWidth="1px"
+        h="calc(100vh - 8rem)"
+        maxH="calc(100vh - 8rem)"
+        display="flex"
+        flexDirection="column"
+      >
         <ModalHeader color="white">
-          <Flex align="center" justify="space-between" gap={3}>
-            <Text noOfLines={1}>{headerTitle}</Text>
+          <Text noOfLines={1}>{headerTitle}</Text>
+          <Flex align="center" justify={"center"} w="100%">
             {isStarted && questionCount > 0 && (
               <Text color="gray.300" fontSize="sm" whiteSpace="nowrap">
                 {`Question ${clampedIndex + 1} / ${questionCount}`}
               </Text>
             )}
+
+            <ModalCloseButton color="white" />
           </Flex>
         </ModalHeader>
-        <ModalCloseButton color="white" />
-        <ModalBody>
+
+        <ModalBody overflowY="auto" flex="1">
           {isLoading ? (
             <Flex align="center" justify="center" py={10}>
               <Spinner color="#3B82F6" thickness="3px" />
@@ -346,70 +367,60 @@ export const ActivityModal = ({ isOpen, onClose, activityId }) => {
               {isFlashcards && (
                 <FlashcardsActivityRunner question={currentQuestion} />
               )}
-
-              {!isMultipleChoice && !isFreeText && !isFlashcards && (
-                <Text color="gray.400">Unsupported activity type.</Text>
-              )}
-
-              <Flex align="center" justify="space-between" mt={5}>
-                <IconButton
-                  icon={<FaChevronLeft />}
-                  onClick={goPrev}
-                  isDisabled={clampedIndex <= 0}
-                  variant="ghost"
-                  color="gray.300"
-                  _hover={{ bg: "#334155" }}
-                />
-
-                <Text color="gray.400" fontSize="sm">
-                  {activityType}
-                </Text>
-
-                {clampedIndex >= questionCount - 1 ? (
-                  <Button
-                    bg="#3B82F6"
-                    color="white"
-                    _hover={{ bg: "#2563EB" }}
-                    onClick={handleFinish}
-                    isLoading={isSubmitting}
-                    isDisabled={Boolean(attemptResult) || isSubmitting}
-                  >
-                    Finish
-                  </Button>
-                ) : (
-                  <IconButton
-                    icon={<FaChevronRight />}
-                    onClick={goNext}
-                    isDisabled={clampedIndex >= questionCount - 1}
-                    variant="ghost"
-                    color="gray.300"
-                    _hover={{ bg: "#334155" }}
-                  />
-                )}
-              </Flex>
             </Box>
           )}
         </ModalBody>
 
         <ModalFooter>
-          <Button
-            variant="ghost"
-            mr={3}
-            onClick={handleClose}
-            color="gray.300"
-            _hover={{ bg: "#334155" }}
-          >
-            Close
-          </Button>
+          {isStarted && questionCount > 0 && (
+            <Flex align="center" w="100%" justify="space-between" mt={5}>
+              <Button
+                colorScheme="blue"
+                varianrt="solid"
+                cursor="pointer"
+                onClick={goPrev}
+                transition="all 0.3s ease"
+                marginLeft={2}
+              >
+                PREV
+              </Button>
+
+              {clampedIndex >= questionCount - 1 ? (
+                <Button
+                  colorScheme="blue"
+                  varianrt="solid"
+                  cursor="pointer"
+                  onClick={goNext}
+                  transition="all 0.3s ease"
+                  marginLeft={2}
+                >
+                  FINISH
+                </Button>
+              ) : (
+                <Button
+                  colorScheme="blue"
+                  varianrt="solid"
+                  cursor="pointer"
+                  onClick={goNext}
+                  transition="all 0.3s ease"
+                  marginLeft={2}
+                >
+                  NEXT
+                </Button>
+              )}
+            </Flex>
+          )}
           {!isStarted && (
             <Button
-              bg="#3B82F6"
-              color="white"
-              _hover={{ bg: "#2563EB" }}
+              colorScheme="blue"
+              varianrt="solid"
+              cursor="pointer"
               isDisabled={!activityId || isLoading || !questionCount}
               onClick={handleStart}
+              transition="all 0.3s ease"
+              marginLeft={2}
             >
-              Start
+              START
             </Button>
           )}
         </ModalFooter>
