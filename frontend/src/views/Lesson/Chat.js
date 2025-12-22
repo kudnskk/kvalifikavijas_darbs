@@ -187,12 +187,18 @@ const Chat = () => {
   };
 
   const handleSendMessage = async () => {
-    const hasText = Boolean(newMessage.trim());
-    const hasFile = Boolean(file);
+    if (!newMessage.trim()) {
+      toast({
+        title: "Error",
+        description: "Message content cannot be empty",
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+      return;
+    }
 
-    if (!hasText && !hasFile) return;
-
-    const payload = hasFile
+    const payload = file
       ? (() => {
           const formDataToSend = new FormData();
           formDataToSend.append("lesson_id", id);
@@ -237,10 +243,7 @@ const Chat = () => {
 
   return (
     <Box bg="#0F172A" height="calc(100vh - 60px)">
-      {/* Chat Section */}
-
       <Box
-        padding={4}
         display="flex"
         flexDirection="column"
         height="100%"
@@ -248,24 +251,62 @@ const Chat = () => {
       >
         {selectedLesson ? (
           <>
-            <Box pb={1} borderBottom="1px solid" borderColor="#334155">
-              <Text
-                fontSize="xs"
-                color="gray.400"
-                letterSpacing="0.12em"
-                textTransform="uppercase"
-              >
-                Lesson
-              </Text>
-              <Heading size="md" color="white" noOfLines={1}>
-                {selectedLesson}
-              </Heading>
+            <Box p={2} borderBottom="1px solid" borderColor="#334155">
+              <Flex justify="space-between" align="center">
+                <Box>
+                  {" "}
+                  <Text
+                    fontSize="xs"
+                    color="gray.400"
+                    letterSpacing="0.12em"
+                    textTransform="uppercase"
+                  >
+                    Lesson
+                  </Text>
+                  <Heading size="md" color="white" noOfLines={1}>
+                    {selectedLesson}
+                  </Heading>
+                </Box>
+                <Menu>
+                  <Tooltip label="Activity menu" hasArrow placement="right">
+                    <MenuButton
+                      as={IconButton}
+                      icon={<FaBars />}
+                      size="md"
+                      variant="ghost"
+                      color="gray.400"
+                      _hover={{ color: "#3B82F6", bg: "#1E293B" }}
+                      cursor="pointer"
+                      alignSelf="flex-start"
+                    />
+                  </Tooltip>
+                  <MenuList bgColor="#1E293B">
+                    <MenuItem
+                      onClick={onCreateActivityModalOpen}
+                      bgColor="#1E293B"
+                      color="white"
+                      _hover={{ color: "#3B82F6", bg: "#334155" }}
+                    >
+                      Create new activity
+                    </MenuItem>
+                    <MenuItem
+                      onClick={handleViewAllActivities}
+                      bgColor="#1E293B"
+                      color="white"
+                      _hover={{ color: "#3B82F6", bg: "#334155" }}
+                    >
+                      View all activities
+                    </MenuItem>
+                  </MenuList>
+                </Menu>
+              </Flex>
             </Box>
             <Box
               flex="1"
               overflowY="auto"
               marginBottom={1}
               ref={scrollContainerRef}
+              px={4}
             >
               {Array.isArray(messages) &&
                 messages.map((message, index) => {
@@ -426,47 +467,13 @@ const Chat = () => {
               )}
             </Flex>
             <Flex align={"center"}>
-              <VStack>
-                <Menu placement="top-start">
-                  <Tooltip label="Activity menu" hasArrow placement="right">
-                    <MenuButton
-                      as={IconButton}
-                      icon={<FaBars />}
-                      size="md"
-                      variant="ghost"
-                      color="gray.400"
-                      _hover={{ color: "#3B82F6", bg: "#1E293B" }}
-                      cursor="pointer"
-                      alignSelf="flex-start"
-                    />
-                  </Tooltip>
-                  <MenuList bgColor="#1E293B">
-                    <MenuItem
-                      onClick={onCreateActivityModalOpen}
-                      bgColor="#1E293B"
-                      color="white"
-                      _hover={{ color: "#3B82F6", bg: "#334155" }}
-                    >
-                      Create new activity
-                    </MenuItem>
-                    <MenuItem
-                      onClick={handleViewAllActivities}
-                      bgColor="#1E293B"
-                      color="white"
-                      _hover={{ color: "#3B82F6", bg: "#334155" }}
-                    >
-                      View all activities
-                    </MenuItem>
-                  </MenuList>
-                </Menu>
-                <ChatFileDropzone
-                  onFilesSelected={(files) => {
-                    setAttachedFiles(files);
-                    setFile(files[0] ?? null);
-                  }}
-                  files={attachedFiles}
-                />
-              </VStack>
+              <ChatFileDropzone
+                onFilesSelected={(files) => {
+                  setAttachedFiles(files);
+                  setFile(files[0] ?? null);
+                }}
+                files={attachedFiles}
+              />
 
               <Textarea
                 color="white"

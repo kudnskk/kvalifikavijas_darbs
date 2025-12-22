@@ -8,7 +8,7 @@ const MainNavBar = () => {
   return (
     <Box
       h="60px"
-      bg="#0F172A"
+      bg="#081229"
       px={8}
       py={4}
       borderBottom="1px solid"

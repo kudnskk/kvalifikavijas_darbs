@@ -384,13 +384,7 @@ Response style:
 
 const generateAIResponse = async (userMessage, lessonId, userId) => {
   try {
-    console.log("Generating AI response for:", userMessage);
-
     const lesson = await Lesson.findById(lessonId).lean();
-    if (!lesson) {
-      console.warn("Lesson not found for AI response", { lessonId });
-      return;
-    }
 
     const previousMessages = await Message.find({ lesson_id: lessonId })
       .sort({ createdAt: -1 }) // newest first
@@ -401,14 +395,12 @@ const generateAIResponse = async (userMessage, lessonId, userId) => {
 
     const historyAsInput = previousMessages.map(formatMessageForModel);
 
-    const latestUserText =
-      typeof userMessage === "string" ? userMessage.trim() : "";
-    if (latestUserText) {
+    if (userMessage.trim()) {
       const last = historyAsInput[historyAsInput.length - 1];
       if (last && last.role === "user") {
-        last.content = latestUserText;
+        last.content = userMessage.trim();
       } else {
-        historyAsInput.push({ role: "user", content: latestUserText });
+        historyAsInput.push({ role: "user", content: userMessage.trim() });
       }
     }
 
@@ -419,9 +411,11 @@ const generateAIResponse = async (userMessage, lessonId, userId) => {
       max_output_tokens: 2048,
       reasoning: { effort: "low" },
     });
-
+    if (response.status !== "completed" || error != null) {
+      throw new Error("OpenAI response failed!");
+    }
     const aiResponse = response.output_text;
-    console.log("AI Response:", aiResponse);
+    console.log("AI Response:", response);
 
     const aiMessage = new Message({
       content: aiResponse,

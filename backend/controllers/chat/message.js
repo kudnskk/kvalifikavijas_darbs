@@ -83,10 +83,17 @@ const createMessage = async (req, res) => {
 
     const hasFile = Boolean(req.file);
 
-    if (!lesson_id || (!content.trim() && !hasFile)) {
+    if (!lesson_id || !content.trim()) {
       return res.status(400).json({
         status: false,
-        message: "Lesson ID and either content or a file are required",
+        message: "Not all required input fields are filled in!",
+      });
+    }
+
+    if (content.length > 5000) {
+      return res.status(400).json({
+        status: false,
+        message: "Message text is longer than 5000 symbols!",
       });
     }
 
@@ -98,7 +105,7 @@ const createMessage = async (req, res) => {
     if (!lesson) {
       return res.status(404).json({
         status: false,
-        message: "Lesson not found or does not belong to user",
+        message: "No lesson found!",
       });
     }
 
