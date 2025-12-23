@@ -11,6 +11,20 @@ const {
   gradeFreeTextAnswers,
 } = require("../../utils/assistantInstructions");
 
+const mapRequestTypeToModel = (type) => {
+  if (type === "multiple-choice") return "multiple_choice";
+  if (type === "text") return "text";
+  if (type === "flashcards") return "flashcard";
+  return null;
+};
+
+const mapActivityTypeToDb = (modelActivityType) => {
+  if (modelActivityType === "multiple_choice") return "multiple-choice";
+  if (modelActivityType === "text") return "text";
+  if (modelActivityType === "flashcard") return "flashcards";
+  return null;
+};
+
 const createActivity = async (req, res) => {
   try {
     const io = req.io;
@@ -18,107 +32,50 @@ const createActivity = async (req, res) => {
     const { lesson_id, title, description, type, question_count } = req.body;
 
     const t0 = Date.now();
-    console.log("[createActivity] start", {
-      userId: String(userId),
-      lesson_id: String(lesson_id),
-      type,
-      question_count,
-    });
 
-    const mapActivityTypeToModel = (t) => {
-      if (t === "multiple_choice") return "multiple_choice";
-      if (t === "free_text") return "free_text";
-      if (t === "flashcard") return "flashcard";
-
-      if (t === "multiple-choice") return "multiple_choice";
-      if (t === "text") return "free_text";
-      if (t === "flashcards") return "flashcard";
-
-      return null;
-    };
-
-    if (!lesson_id) {
+    if (!type || !question_count || !title || !description || !lesson_id) {
       return res.status(400).json({
         status: false,
-        message: "Lesson ID is required",
+        message: "Not all required input fields are filled in!",
       });
     }
 
-    if (!type) {
+    if (description.length > 1000) {
       return res.status(400).json({
         status: false,
-        message: "Activity type is required",
+        message: "Activity description field is longer that 1000 letters!",
       });
     }
 
-    const modelRequestedType = mapActivityTypeToModel(type);
-    if (!modelRequestedType) {
+    if (!["multiple-choice", "flashcards", "text"].includes(type)) {
       return res.status(400).json({
         status: false,
-        message: "Invalid activity type",
+        message:
+          "Activity type must be either multiple-choice, flashcards or free-text!",
       });
     }
 
-    const parsedQuestionCount = Number(question_count);
-    if (!Number.isFinite(parsedQuestionCount) || parsedQuestionCount <= 0) {
+    if (![5, 10, 15, 20].includes(Number(question_count))) {
       return res.status(400).json({
         status: false,
-        message: "Question count must be a positive number",
+        message: "Activity must be either 5, 10, 15 or 20 questions long!",
       });
-    }
-
-    const mapActivityTypeToDb = (t) => {
-      if (t === "multiple_choice") return "multiple-choice";
-      if (t === "free_text") return "text";
-      if (t === "flashcard") return "flashcards";
-      return "text";
-    };
-
-    const trimmedTitleForDedupe = String(title || "").trim();
-    const trimmedDescriptionForDedupe = String(description || "").trim();
-    const requestedDbType = mapActivityTypeToDb(modelRequestedType);
-    const dedupeSince = new Date(Date.now() - 2 * 60 * 1000);
-
-    if (trimmedTitleForDedupe) {
-      const recentActivity = await Activity.findOne({
-        lesson_id,
-        title: trimmedTitleForDedupe,
-        type: requestedDbType,
-        question_count: parsedQuestionCount,
-        createdAt: { $gte: dedupeSince },
-      })
-        .sort({ createdAt: -1 })
-        .lean();
-
-      if (recentActivity?.message_id) {
-        const existingMessage = await Message.findById(
-          recentActivity.message_id,
-        ).lean();
-
-        const expectedContent =
-          trimmedDescriptionForDedupe || trimmedTitleForDedupe;
-        if (existingMessage && existingMessage.type === "activity") {
-          if (String(existingMessage.content || "") === expectedContent) {
-            return res.status(200).json({
-              status: true,
-              message: "Activity already created recently",
-              data: {
-                ...existingMessage,
-                activity_id: recentActivity._id,
-                activity_title: recentActivity.title,
-                activity_type: recentActivity.type,
-              },
-            });
-          }
-        }
-      }
     }
 
     const lesson = await Lesson.findOne({ _id: lesson_id, user_id: userId });
     if (!lesson) {
       return res.status(404).json({
         status: false,
-        message: "Lesson not found or does not belong to user",
+        message: "Lesson not found!",
+      });
+    }
+
+    const parsedQuestionCount = Number(question_count);
+    const modelRequestedType = mapRequestTypeToModel(type);
+    if (!modelRequestedType) {
+      return res.status(400).json({
+        status: false,
+        message: "Unsupported activity type",
       });
     }
 
@@ -126,18 +83,9 @@ const createActivity = async (req, res) => {
       lessonId: lesson_id,
       userId,
       activityType: modelRequestedType,
-      questionCount: parsedQuestionCount,
+      questionCount: question_count,
       title,
       description,
-    });
-
-    console.log("[createActivity] generation finished", {
-      ms: Date.now() - t0,
-      status: generationResult?.status,
-      activityType: generationResult?.activityType,
-      itemCount: Array.isArray(generationResult?.items)
-        ? generationResult.items.length
-        : null,
     });
 
     if (!generationResult || generationResult.status !== "ok") {
@@ -167,6 +115,13 @@ const createActivity = async (req, res) => {
     const activityChatDescription = trimmedDescription || activityTitle;
 
     const dbActivityType = mapActivityTypeToDb(modelActivityType);
+
+    if (!dbActivityType) {
+      return res.status(400).json({
+        status: false,
+        message: "Model returned unknown activity type",
+      });
+    }
 
     if (!modelActivityType || !modelItems.length) {
       return res.status(400).json({
@@ -227,7 +182,7 @@ const createActivity = async (req, res) => {
           let questionText = "";
           if (
             modelActivityType === "multiple_choice" ||
-            modelActivityType === "free_text"
+            modelActivityType === "text"
           ) {
             questionText = String(item.question || "").trim();
           } else if (modelActivityType === "flashcard") {
@@ -290,8 +245,8 @@ const createActivity = async (req, res) => {
                 question_id: questionId,
               });
             }
-          } else if (modelActivityType === "free_text") {
-            // For now: store no answers for free_text activities
+          } else if (modelActivityType === "text") {
+            // For now: store no answers for free-text activities
           } else if (modelActivityType === "flashcard") {
             const back = String(item.back || "").trim();
             answerDocs.push({

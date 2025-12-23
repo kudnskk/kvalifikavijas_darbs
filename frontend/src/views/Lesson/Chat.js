@@ -451,6 +451,7 @@ const Chat = () => {
                           onOpen={() => openActivityModal(message.activity_id)}
                           type={message.activity_type}
                           title={message.activity_title}
+                          createdAt={message.createdAt}
                         />
                       )}
                     </React.Fragment>

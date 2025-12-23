@@ -46,45 +46,16 @@ const CreateActivityModal = ({
 
   const handleSubmit = async () => {
     if (isLoading) return;
-    const trimmedTitle = title.trim();
 
-    if (!lessonId) {
+    if (
+      !title.trim() ||
+      !description.trim() ||
+      !activityType ||
+      !questionCount
+    ) {
       toast({
         title: "Error",
-        description: "Lesson ID is missing",
-        status: "error",
-        duration: 3000,
-        isClosable: true,
-      });
-      return;
-    }
-
-    if (!trimmedTitle || !description.trim()) {
-      toast({
-        title: "Error",
-        description: "Please enter a title and description",
-        status: "error",
-        duration: 3000,
-        isClosable: true,
-      });
-      return;
-    }
-
-    if (!activityType) {
-      toast({
-        title: "Error",
-        description: "Please select an activity type",
-        status: "error",
-        duration: 3000,
-        isClosable: true,
-      });
-      return;
-    }
-
-    if (!questionCount) {
-      toast({
-        title: "Error",
-        description: "Please select question count",
+        description: "Not all required input fields are filled in!",
         status: "error",
         duration: 3000,
         isClosable: true,
@@ -96,7 +67,7 @@ const CreateActivityModal = ({
     try {
       const response = await activityApi.createActivity({
         lesson_id: lessonId,
-        title: trimmedTitle,
+        title: title.trim(),
         description: description.trim(),
         type: activityType,
         question_count: Number(questionCount),
