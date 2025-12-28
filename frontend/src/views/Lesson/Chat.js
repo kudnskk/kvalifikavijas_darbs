@@ -248,6 +248,7 @@ const Chat = () => {
         flexDirection="column"
         height="100%"
         overflow="hidden"
+        pb={2}
       >
         {selectedLesson ? (
           <>

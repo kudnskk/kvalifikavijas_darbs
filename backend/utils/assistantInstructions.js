@@ -359,10 +359,10 @@ const generateAIResponse = async (userMessage, lessonId, userId) => {
       max_output_tokens: 2048,
       reasoning: { effort: "low" },
     });
-    if (response.status !== "completed")
+    if (response.status !== "completed" || response.error != null) {
       throw new Error("OpenAI response failed!");
+    }
     const aiResponse = response.output_text;
-    console.log("AI Response:", response);
 
     const aiMessage = new Message({
       content: aiResponse,
