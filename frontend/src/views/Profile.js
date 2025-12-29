@@ -32,6 +32,32 @@ const Profile = () => {
   });
 
   const [password, setPassword] = useState("");
+  const [verifyCode, setVerifyCode] = useState("");
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [verifyError, setVerifyError] = useState("");
+  const handleVerifyEmail = async () => {
+    setIsVerifying(true);
+    setVerifyError("");
+    try {
+      const res = await authApi.verifyEmail({ code: verifyCode.trim() });
+      if (res?.status) {
+        toast({
+          title: "Email verified!",
+          status: "success",
+          duration: 2000,
+          isClosable: true,
+        });
+        setUser((prev) => ({ ...prev, is_email_verified: true }));
+        setVerifyCode("");
+      } else {
+        setVerifyError(res?.message || "Invalid code");
+      }
+    } catch (error) {
+      setVerifyError(error?.message || "Verification failed");
+    } finally {
+      setIsVerifying(false);
+    }
+  };
 
   const getProfileData = async () => {
     setIsLoading(true);
@@ -135,6 +161,53 @@ const Profile = () => {
           <Text color="gray.400">Your account information</Text>
         </Box>
 
+        {/* Email verification section */}
+        {user && user.is_email_verified === false && (
+          <Card bg="#1E293B" borderColor="#334155" borderWidth="1px" mb={8}>
+            <CardBody>
+              <VStack align="stretch" spacing={4}>
+                <Box>
+                  <Heading size="md" color="white">
+                    Verify your email
+                  </Heading>
+                  <Text color="gray.400" fontSize="sm">
+                    Enter the 4-digit code sent to your email address to verify
+                    your account.
+                  </Text>
+                </Box>
+                <FormControl isRequired>
+                  <FormLabel color="gray.300">Verification code</FormLabel>
+                  <Input
+                    color="white"
+                    type="text"
+                    maxLength={4}
+                    value={verifyCode}
+                    onChange={(e) => setVerifyCode(e.target.value)}
+                    placeholder="4-digit code"
+                    bg="#0B1220"
+                    borderColor="#334155"
+                  />
+                </FormControl>
+                {verifyError && (
+                  <Text color="red.300" fontSize="sm">
+                    {verifyError}
+                  </Text>
+                )}
+                <HStack justify="flex-end">
+                  <Button
+                    colorScheme="blue"
+                    onClick={handleVerifyEmail}
+                    isLoading={isVerifying}
+                    isDisabled={verifyCode.length !== 4 || isVerifying}
+                  >
+                    Verify email
+                  </Button>
+                </HStack>
+              </VStack>
+            </CardBody>
+          </Card>
+        )}
+
         <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6} mb={8}>
           <Card bg="#1E293B" borderColor="#334155" borderWidth="1px">
             <CardBody>
@@ -176,6 +249,7 @@ const Profile = () => {
               <FormControl isRequired>
                 <FormLabel color="gray.300">Password</FormLabel>
                 <Input
+                  color="white"
                   type="password"
                   autoComplete="new-password"
                   value={password}

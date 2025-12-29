@@ -27,7 +27,7 @@ import NewLessonModal from "./components/NewLessonModal";
 import AcceptModal from "../components/AcceptModal";
 import { FaChevronRight, FaChevronDown } from "react-icons/fa6";
 import { categoryApi } from "../api";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { FaBook, FaLaptopCode, FaCalculator, FaBrain } from "react-icons/fa";
 
 const COLORS = [

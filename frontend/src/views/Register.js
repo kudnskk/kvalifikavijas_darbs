@@ -103,6 +103,7 @@ const Register = () => {
           duration: 1000,
           isClosable: true,
         });
+        localStorage.setItem("sessionToken", response?.token);
         setTimeout(() => {
           navigate("/dashboard");
         }, 1200);

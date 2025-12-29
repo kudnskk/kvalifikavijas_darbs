@@ -1,18 +1,47 @@
-import React, { Suspense, lazy } from "react";
+import React, { Suspense, lazy, useState, useEffect } from "react";
 import ReactDOM from "react-dom/client";
 import { HashRouter, Navigate, Routes, Route } from "react-router-dom";
 import { ChakraProvider, Spinner, Center } from "@chakra-ui/react";
 import { routes } from "./routes";
 import ProtectedRoute from "./components/ProtectedRoute";
 import theme from "./theme";
+
+import authApi from "./api/authApi";
 const LoginLayout = lazy(() => import("./layouts/LoginLayout"));
 const MainLayout = lazy(() => import("./layouts/MainLayout"));
 
-// Component to handle 404 redirection based on auth
 const NotFoundRedirect = () => {
-  // const token = localStorage.getItem('authToken');
-  // const isAuthenticated = !!token;
-  const isAuthenticated = true; // Temporarily disabled auth check
+  const [checked, setChecked] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const token = localStorage.getItem("sessionToken");
+      if (!token) {
+        setIsAuthenticated(false);
+        setChecked(true);
+        return;
+      }
+      try {
+        const res = await authApi.verify();
+        setIsAuthenticated(res?.status === true);
+      } catch {
+        setIsAuthenticated(false);
+      } finally {
+        setChecked(true);
+      }
+    };
+    checkAuth();
+  }, []);
+
+  if (!checked) {
+    //show the loading process
+    return (
+      <Center h="100vh">
+        <Spinner size="xl" color="teal.500" thickness="4px" />
+      </Center>
+    );
+  }
   return <Navigate to={isAuthenticated ? "/dashboard" : "/"} replace />;
 };
 

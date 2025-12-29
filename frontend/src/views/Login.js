@@ -148,6 +148,16 @@ const Login = () => {
               Register here
             </Link>
           </Text>
+          <Text textAlign="center">
+            <Link
+              color="gray.600"
+              onClick={() => {
+                navigate("/forgot-password");
+              }}
+            >
+              Forgot Password
+            </Link>
+          </Text>
         </VStack>
       </Box>
     </Container>
