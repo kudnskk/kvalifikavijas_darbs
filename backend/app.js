@@ -63,6 +63,7 @@ const categoryRouter = require("./routers/chat/categoryRouter");
 const lessonRouter = require("./routers/chat/lessonRouter");
 const messageRouter = require("./routers/chat/messageRouter");
 const activityRouter = require("./routers/activities/activityRouter");
+const userRouter = require("./routers/users/userRouter");
 // morgan routes view log
 if (app.get("env") === "development") {
   app.use(morgan("tiny"));
@@ -77,12 +78,13 @@ mongoose
   .catch((err) => console.log("Data base connection error:", err.message));
 
 // use routes
-app.use("/api/auth", auth); // Public route (login) and protected route (verify)
-app.use("/api/files", fileRouter); // Protected routes - file upload/management
-app.use("/api/categories", categoryRouter); // Protected routes - categories and lessons
-app.use("/api/lessons", lessonRouter); // Protected routes - lesson management
-app.use("/api/messages", messageRouter); // Protected routes - lesson messages
-app.use("/api/activities", activityRouter); // Protected routes - activities
+app.use("/api/auth", auth);
+app.use("/api/files", fileRouter);
+app.use("/api/categories", categoryRouter);
+app.use("/api/lessons", lessonRouter);
+app.use("/api/messages", messageRouter);
+app.use("/api/activities", activityRouter);
+app.use("/api/users", userRouter);
 
 // server welcome response
 app.get("/", (req, res) => {

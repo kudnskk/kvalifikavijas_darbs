@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import {
   Box,
   Button,
@@ -33,6 +33,7 @@ import { FaFilePdf, FaFileWord, FaFileAlt, FaBars } from "react-icons/fa";
 import CreateActiviyModal from "./components/CreateActivityModal";
 import ActivityMessage from "./components/activities/ActivityMessage";
 import { ActivityModal } from "./components/activities/ActivityModal";
+import ViewActivitiesModal from "./components/ViewActivitiesModal";
 const transformDate = (dateString) => {
   const date = new Date(dateString);
   return date.toLocaleTimeString("en-GB", {
@@ -83,6 +84,12 @@ const Chat = () => {
   } = useDisclosure();
 
   const {
+    isOpen: isViewActivitiesModalOpen,
+    onOpen: onViewActivitiesModalOpen,
+    onClose: onViewActivitiesModalClose,
+  } = useDisclosure();
+
+  const {
     isOpen: isActivityModalOpen,
     onOpen: onActivityModalOpen,
     onClose: onActivityModalClose,
@@ -92,14 +99,32 @@ const Chat = () => {
   const [fileViewerData, setFileViewerData] = useState(null);
 
   const handleViewAllActivities = () => {
-    toast({
-      title: "Not implemented",
-      description: "View all activities is not implemented yet.",
-      status: "info",
-      duration: 3000,
-      isClosable: true,
-    });
+    onViewActivitiesModalOpen();
   };
+
+  const activitiesInChat = useMemo(() => {
+    const list = Array.isArray(messages) ? messages : [];
+    const seen = new Set();
+    const out = [];
+
+    for (const m of list) {
+      if (m?.type === "text") continue;
+      const activityId = m?.activity_id;
+      if (!activityId) continue;
+      const key = String(activityId);
+      if (seen.has(key)) continue;
+      seen.add(key);
+
+      out.push({
+        activity_id: activityId,
+        title: m?.activity_title || "",
+        type: m?.activity_type || "",
+      });
+    }
+
+    out.sort((a, b) => String(a.title).localeCompare(String(b.title)));
+    return out;
+  }, [messages]);
 
   const getAllMessagesFunc = async () => {
     setIsLoading(true);
@@ -492,7 +517,7 @@ const Chat = () => {
 
               <Button
                 colorScheme="blue"
-                varianrt="solid"
+                variant="solid"
                 cursor="pointer"
                 onClick={handleSendMessage}
                 transition="all 0.3s ease"
@@ -515,6 +540,13 @@ const Chat = () => {
           getAllMessagesFunc();
         }}
         setMessages={setMessages}
+      />
+
+      <ViewActivitiesModal
+        isOpen={isViewActivitiesModalOpen}
+        onClose={onViewActivitiesModalClose}
+        activities={activitiesInChat}
+        onOpenActivity={(activityId) => openActivityModal(activityId)}
       />
 
       <Modal isOpen={isFileViewerOpen} onClose={onFileViewerClose} size="xl">

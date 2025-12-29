@@ -15,7 +15,6 @@ import {
   StatLabel,
   StatNumber,
   StatHelpText,
-  StatArrow,
   HStack,
   VStack,
   useDisclosure,
@@ -33,12 +32,18 @@ import { useNavigate } from "react-router-dom";
 import NewCategoryModal from "../layouts/components/NewCategoryModal";
 import NewLessonModal from "../layouts/components/NewLessonModal";
 import { categoryApi } from "../api";
+import { userApi } from "../api";
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const toast = useToast();
   const [categories, setCategories] = useState([]);
+  const [lessons, setLessons] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [dashboardStats, setDashboardStats] = useState({
+    activityAttemptCount: 0,
+    inProgressUpdatedThisWeek: 0,
+  });
 
   const {
     isOpen: isNewCategoryModalOpen,
@@ -51,32 +56,53 @@ const Dashboard = () => {
     onClose: onNewLessonModalClose,
   } = useDisclosure();
 
-  const userStats = {
-    totalLessons: 24,
-    completedLessons: 18,
-    inProgressLessons: 6,
-    totalCategories: 4,
-    studyTime: "45h 30m",
-    weeklyProgress: 12,
-  };
+  const totalLessons = Array.isArray(lessons) ? lessons.length : 0;
+  const completedLessons = Array.isArray(lessons)
+    ? lessons.filter((l) => l?.status === "completed").length
+    : 0;
+  const inProgressLessons = Array.isArray(lessons)
+    ? lessons.filter((l) => l?.status === "in-progress").length
+    : 0;
+  const totalCategories = Array.isArray(categories) ? categories.length : 0;
 
   const getDataForDisplay = async () => {
     setIsLoading(true);
     try {
-      const data = await categoryApi.getAllCategoriesAndLessons();
-      if (data.status) {
-        setCategories(data.data.categories);
+      const [data, stats] = await Promise.all([
+        categoryApi.getAllCategoriesAndLessons(),
+        userApi.getStats(),
+      ]);
+
+      if (data?.status) {
+        setCategories(data.data.categories || []);
+        setLessons(data.data.lessons || []);
       } else {
         toast({
           title: "Failed fetching data",
-          description: data.message || "failed",
+          description: data?.message || "failed",
           status: "error",
           duration: 3000,
           isClosable: true,
         });
       }
+
+      if (stats?.status) {
+        setDashboardStats({
+          activityAttemptCount: Number(stats?.data?.activityAttemptCount || 0),
+          inProgressUpdatedThisWeek: Number(
+            stats?.data?.inProgressUpdatedThisWeek || 0
+          ),
+        });
+      }
     } catch (error) {
       console.error("Error fetching categories:", error);
+      toast({
+        title: "Failed fetching data",
+        description: error?.message || "failed",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
     } finally {
       setIsLoading(false);
     }
@@ -141,10 +167,10 @@ const Dashboard = () => {
               <Stat>
                 <StatLabel color="gray.400">Total Lessons</StatLabel>
                 <StatNumber color="white" fontSize="3xl">
-                  {userStats.totalLessons}
+                  {totalLessons}
                 </StatNumber>
                 <StatHelpText color="gray.500">
-                  {userStats.completedLessons} completed
+                  {completedLessons} completed
                 </StatHelpText>
               </Stat>
             </CardBody>
@@ -155,12 +181,13 @@ const Dashboard = () => {
               <Stat>
                 <StatLabel color="gray.400">In Progress</StatLabel>
                 <StatNumber color="white" fontSize="3xl">
-                  {userStats.inProgressLessons}
+                  {inProgressLessons}
                 </StatNumber>
-                <StatHelpText color="green.400">
-                  <StatArrow type="increase" />
-                  {userStats.weeklyProgress}% this week
-                </StatHelpText>
+                {/* <StatHelpText color="green.400">
+                  {dashboardStats.inProgressUpdatedThisWeek} updated (last 7
+                  days)
+                </StatHelpText> */}
+                <StatHelpText color="gray.500">lessons</StatHelpText>
               </Stat>
             </CardBody>
           </Card>
@@ -170,7 +197,7 @@ const Dashboard = () => {
               <Stat>
                 <StatLabel color="gray.400">Categories</StatLabel>
                 <StatNumber color="white" fontSize="3xl">
-                  {userStats.totalCategories}
+                  {totalCategories}
                 </StatNumber>
                 <StatHelpText color="gray.500">
                   Active learning paths
@@ -182,12 +209,12 @@ const Dashboard = () => {
           <Card bg="#1E293B" borderColor="#334155" borderWidth="1px">
             <CardBody>
               <Stat>
-                <StatLabel color="gray.400">Study Time</StatLabel>
+                <StatLabel color="gray.400">Activity Attempts</StatLabel>
                 <StatNumber color="white" fontSize="3xl">
-                  {userStats.studyTime}
+                  {dashboardStats.activityAttemptCount}
                 </StatNumber>
                 <StatHelpText color="gray.500">
-                  Total time invested
+                  Total submitted attempts
                 </StatHelpText>
               </Stat>
             </CardBody>

@@ -6,7 +6,8 @@ const Login = lazy(() => import("./views/Login"));
 const Dashboard = lazy(() => import("./views/Dashboard"));
 const Register = lazy(() => import("./views/Register"));
 const Chat = lazy(() => import("./views/Lesson/Chat"));
-//const Profile = lazy(() => import('../views/Profile'));
+const Profile = lazy(() => import("./views/Profile"));
+const AdminPanel = lazy(() => import("./views/AdminPanel"));
 // ... more imports
 
 export const routes = [
@@ -15,7 +16,8 @@ export const routes = [
   { path: "/register", element: Register, protected: false },
   { path: "/dashboard", element: Dashboard, protected: true },
   { path: "/lesson/:id", element: Chat, protected: true },
-  //{ path: '/profile', element: Profile, protected: true },
+  { path: "/profile", element: Profile, protected: true },
+  { path: "/admin", element: AdminPanel, protected: true },
   // grouped routes
   //   {
   //     path: '/admin',

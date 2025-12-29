@@ -1,9 +1,25 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Box, Flex, Text, Spacer, Image } from "@chakra-ui/react";
 import { useNavigate } from "react-router-dom";
 import ShinyText from "components/ShinyText";
+import { authApi, userApi } from "../../api";
 const MainNavBar = () => {
   const navigate = useNavigate();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await userApi.getMe();
+        if (res?.status) {
+          setIsAdmin(res?.data?.user?.user_type === "admin");
+        }
+      } catch {
+        setIsAdmin(false);
+      }
+    };
+    load();
+  }, []);
 
   return (
     <Box
@@ -21,6 +37,24 @@ const MainNavBar = () => {
         </Box>
         <Spacer />
 
+        {isAdmin ? (
+          <Text
+            cursor="pointer"
+            _hover={{
+              transform: "scale(1.03)",
+              color: "red.500",
+              textDecoration: "underline",
+              transition: "all 0.2s ease-in-out",
+            }}
+            color="white"
+            mr={3}
+            size="lg"
+            onClick={() => navigate("/admin")}
+          >
+            Admin
+          </Text>
+        ) : null}
+
         <Text
           cursor="pointer"
           _hover={{
@@ -32,7 +66,7 @@ const MainNavBar = () => {
           color="white"
           mr={3}
           size="lg"
-          onClick={() => navigate("/login")}
+          onClick={() => navigate("/profile")}
         >
           Profile
         </Text>
@@ -45,7 +79,7 @@ const MainNavBar = () => {
             transition: "all 0.2s ease-in-out",
           }}
           color="white"
-          onClick={() => navigate("/register")}
+          onClick={() => authApi.logout()}
         >
           Logout
         </Text>
