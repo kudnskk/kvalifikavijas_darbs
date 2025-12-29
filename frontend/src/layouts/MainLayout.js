@@ -464,7 +464,9 @@ const MainLayout = ({ children }) => {
 
             <VStack spacing={3} align="stretch">
               <Input
+                autoComplete="off"
                 placeholder="Search lessons"
+                name="lesson"
                 value={lessonSearch}
                 onChange={(e) => setLessonSearch(e.target.value)}
                 bg="#0F172A"

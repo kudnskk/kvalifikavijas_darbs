@@ -1,5 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
+  Accordion,
+  AccordionButton,
+  AccordionIcon,
+  AccordionItem,
+  AccordionPanel,
   Box,
   Button,
   Divider,
@@ -30,12 +35,13 @@ export const ActivityModal = ({ isOpen, onClose, activityId }) => {
   const toast = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [activityData, setActivityData] = useState(null);
+  const [attemptHistory, setAttemptHistory] = useState([]);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [isStarted, setIsStarted] = useState(false);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [attemptResult, setAttemptResult] = useState(null);
 
-  // Stored in a backend-friendly shape (question_id -> answer)
   const [
     multipleChoiceAnswersByQuestionId,
     setMultipleChoiceAnswersByQuestionId,
@@ -123,8 +129,21 @@ export const ActivityModal = ({ isOpen, onClose, activityId }) => {
           throw new Error(response?.message || "Failed to load activity");
         }
         if (!cancelled) setActivityData(response.data);
+
+        const loadedType = response?.data?.activity?.type;
+        if (loadedType === "multiple-choice" || loadedType === "text") {
+          if (!cancelled)
+            setAttemptHistory(
+              Array.isArray(response?.data?.attempts)
+                ? response.data.attempts
+                : []
+            );
+        } else {
+          if (!cancelled) setAttemptHistory([]);
+        }
       } catch (err) {
         if (!cancelled) setActivityData(null);
+        if (!cancelled) setAttemptHistory([]);
         toast({
           title: "Error",
           description: err?.message || "Failed to load activity",
@@ -145,6 +164,8 @@ export const ActivityModal = ({ isOpen, onClose, activityId }) => {
 
   const handleClose = () => {
     setActivityData(null);
+    setAttemptHistory([]);
+
     setIsStarted(false);
     setCurrentQuestionIndex(0);
     setMultipleChoiceAnswersByQuestionId({});
@@ -218,7 +239,11 @@ export const ActivityModal = ({ isOpen, onClose, activityId }) => {
         display="flex"
         flexDirection="column"
       >
-        <ModalHeader color="white">
+        <ModalHeader
+          color="white"
+          borderBottomWidth={"1px"}
+          borderColor="#334155"
+        >
           <Text noOfLines={1}>{headerTitle}</Text>
           <Flex align="center" justify={"center"} w="100%">
             {isStarted && questionCount > 0 && (
@@ -270,61 +295,281 @@ export const ActivityModal = ({ isOpen, onClose, activityId }) => {
 
               <Box>
                 <Text color="gray.200" fontWeight="semibold" mb={2}>
-                  Questions
+                  {((isMultipleChoice || isFreeText) && "Completion History") ||
+                    "Question"}
                 </Text>
 
-                <VStack align="stretch" spacing={3}>
-                  {questions.map((q, idx) => (
-                    <Box
-                      key={q._id || idx}
-                      bg="#0F172A"
-                      border="1px solid"
-                      borderColor="#334155"
-                      borderRadius="md"
-                      p={3}
-                    >
-                      <Text color="gray.300" fontSize="sm" mb={2}>
-                        {idx + 1}.
+                {(isMultipleChoice || isFreeText) && (
+                  <Box>
+                    {isHistoryLoading ? (
+                      <Flex align="center" justify="center" py={4}>
+                        <Spinner color="#3B82F6" thickness="3px" />
+                      </Flex>
+                    ) : attemptHistory.length === 0 ? (
+                      <Text color="gray.400" fontSize="sm">
+                        No attempts yet.
                       </Text>
-                      <Text color="white" mb={2} whiteSpace="pre-wrap">
-                        {q.question}
-                      </Text>
+                    ) : (
+                      <Accordion allowMultiple>
+                        {attemptHistory.map((attempt, attemptIndex) => {
+                          const maxScore =
+                            activity?.max_score ??
+                            activity?.question_count ??
+                            questionCount;
+                          const score = Number(attempt?.score || 0);
+                          const attemptAnswers = Array.isArray(attempt?.answers)
+                            ? attempt.answers
+                            : [];
+                          const attemptAnswersByQuestionId =
+                            attemptAnswers.reduce((acc, ans) => {
+                              acc[String(ans.activity_question_id)] = ans;
+                              return acc;
+                            }, {});
 
-                      {Array.isArray(q.answers) && q.answers.length > 0 && (
-                        <VStack align="stretch" spacing={2}>
-                          {q.answers.map((a, ai) => (
-                            <Flex
-                              key={a._id || ai}
-                              align="center"
-                              justify="space-between"
-                              bg="#1E293B"
-                              borderRadius="md"
-                              px={3}
-                              py={2}
-                              border="1px solid"
+                          return (
+                            <AccordionItem
+                              key={attempt?._id || attemptIndex}
                               borderColor="#334155"
                             >
-                              <Text color="gray.200">{a.answer}</Text>
-                              {a.is_correct ? (
-                                <Text color="#3B82F6" fontSize="sm">
-                                  correct
-                                </Text>
-                              ) : (
-                                <Text color="gray.500" fontSize="sm"></Text>
-                              )}
-                            </Flex>
+                              <AccordionButton
+                                bg="#0F172A"
+                                _hover={{ bg: "#0F172A" }}
+                              >
+                                <Flex
+                                  align="center"
+                                  justify="space-between"
+                                  w="100%"
+                                >
+                                  <Text color="white" fontWeight="semibold">
+                                    {`Attempt ${attemptIndex + 1}`}
+                                  </Text>
+                                  <Flex align="center" gap={3}>
+                                    <Text color="gray.300" fontSize="sm">
+                                      {`${score}/${maxScore}`}
+                                    </Text>
+                                    <AccordionIcon color="gray.300" />
+                                  </Flex>
+                                </Flex>
+                              </AccordionButton>
+
+                              <AccordionPanel bg="#1E293B">
+                                <VStack align="stretch" spacing={3}>
+                                  {questions.map((q, idx) => {
+                                    const qid = String(q._id);
+                                    const attemptAnswer =
+                                      attemptAnswersByQuestionId[qid];
+
+                                    const selectedAnswerIds = Array.isArray(
+                                      attemptAnswer?.activity_answer_id
+                                    )
+                                      ? attemptAnswer.activity_answer_id.map(
+                                          String
+                                        )
+                                      : [];
+
+                                    const isCorrect = Boolean(
+                                      attemptAnswer?.is_correct
+                                    );
+
+                                    return (
+                                      <Box
+                                        key={q._id || idx}
+                                        bg="#0F172A"
+                                        border="1px solid"
+                                        borderColor="#334155"
+                                        borderRadius="md"
+                                        p={3}
+                                      >
+                                        <Text
+                                          color="gray.300"
+                                          fontSize="sm"
+                                          mb={2}
+                                        >
+                                          {idx + 1}.
+                                        </Text>
+                                        <Text
+                                          color="white"
+                                          mb={2}
+                                          whiteSpace="pre-wrap"
+                                        >
+                                          {q.question}
+                                        </Text>
+
+                                        {isMultipleChoice &&
+                                          Array.isArray(q.answers) &&
+                                          q.answers.length > 0 && (
+                                            <VStack align="stretch" spacing={2}>
+                                              {q.answers.map((a, ai) => {
+                                                const aid = String(a._id);
+                                                const isSelected =
+                                                  selectedAnswerIds.includes(
+                                                    aid
+                                                  );
+                                                const isSelectedCorrect =
+                                                  isSelected && a.is_correct;
+                                                const isSelectedWrong =
+                                                  isSelected && !a.is_correct;
+
+                                                return (
+                                                  <Flex
+                                                    key={a._id || ai}
+                                                    align="center"
+                                                    justify="space-between"
+                                                    bg={
+                                                      isSelectedCorrect
+                                                        ? "green.900"
+                                                        : isSelectedWrong
+                                                        ? "red.900"
+                                                        : "#1E293B"
+                                                    }
+                                                    borderRadius="md"
+                                                    px={3}
+                                                    py={2}
+                                                    border="1px solid"
+                                                    borderColor={
+                                                      isSelectedCorrect
+                                                        ? "green.400"
+                                                        : isSelectedWrong
+                                                        ? "red.400"
+                                                        : "#334155"
+                                                    }
+                                                  >
+                                                    <Text color="gray.200">
+                                                      {a.answer}
+                                                    </Text>
+                                                    {a.is_correct ? (
+                                                      <Text
+                                                        color="#3B82F6"
+                                                        fontSize="sm"
+                                                      >
+                                                        correct
+                                                      </Text>
+                                                    ) : (
+                                                      <Text
+                                                        color="gray.500"
+                                                        fontSize="sm"
+                                                      ></Text>
+                                                    )}
+                                                  </Flex>
+                                                );
+                                              })}
+                                            </VStack>
+                                          )}
+
+                                        {isFreeText && (
+                                          <Box>
+                                            <Flex
+                                              align="center"
+                                              justify="space-between"
+                                              bg={
+                                                isCorrect
+                                                  ? "green.900"
+                                                  : "red.900"
+                                              }
+                                              borderRadius="md"
+                                              px={3}
+                                              py={2}
+                                              border="1px solid"
+                                              borderColor={
+                                                isCorrect
+                                                  ? "green.400"
+                                                  : "red.400"
+                                              }
+                                            >
+                                              <Text color="gray.200">
+                                                {String(
+                                                  attemptAnswer?.text_answer ||
+                                                    ""
+                                                ) || "(no answer)"}
+                                              </Text>
+                                              <Text
+                                                color={
+                                                  isCorrect
+                                                    ? "green.200"
+                                                    : "red.200"
+                                                }
+                                                fontSize="sm"
+                                              >
+                                                {isCorrect
+                                                  ? "correct"
+                                                  : "wrong"}
+                                              </Text>
+                                            </Flex>
+                                          </Box>
+                                        )}
+                                      </Box>
+                                    );
+                                  })}
+                                </VStack>
+                              </AccordionPanel>
+                            </AccordionItem>
+                          );
+                        })}
+                      </Accordion>
+                    )}
+                  </Box>
+                )}
+                {isFlashcards && (
+                  <Accordion allowToggle>
+                    <AccordionItem borderColor="#334155">
+                      <AccordionButton bg="#0F172A" _hover={{ bg: "#0F172A" }}>
+                        <Flex align="center" justify="space-between" w="100%">
+                          <Text color="gray.200" fontWeight="semibold">
+                            Open activity questions
+                          </Text>
+                          <AccordionIcon color="gray.300" />
+                        </Flex>
+                      </AccordionButton>
+                      <AccordionPanel bg="#1E293B" pt={3}>
+                        <VStack align="stretch" spacing={3}>
+                          {questions.map((q, i) => (
+                            <Box
+                              key={i}
+                              bg="#0F172A"
+                              border="1px solid"
+                              borderColor="#334155"
+                              borderRadius="md"
+                              p={3}
+                            >
+                              <Text color="gray.300" fontSize="sm" mb={2}>
+                                {i + 1}.
+                              </Text>
+                              <Text color="white" mb={2} whiteSpace="pre-wrap">
+                                {q.question}
+                              </Text>
+                              {Array.isArray(q.answers) &&
+                                q.answers.length > 0 && (
+                                  <VStack align="stretch" spacing={2}>
+                                    {q.answers.map((a, ai) => (
+                                      <Flex
+                                        key={a._id || ai}
+                                        align="center"
+                                        justify="space-between"
+                                        bg="#1E293B"
+                                        borderRadius="md"
+                                        px={3}
+                                        py={2}
+                                        border="1px solid"
+                                        borderColor="#334155"
+                                      >
+                                        <Text color="gray.200">{a.answer}</Text>
+                                      </Flex>
+                                    ))}
+                                  </VStack>
+                                )}
+                            </Box>
                           ))}
                         </VStack>
-                      )}
-                    </Box>
-                  ))}
-                </VStack>
+                      </AccordionPanel>
+                    </AccordionItem>
+                  </Accordion>
+                )}
               </Box>
             </VStack>
           ) : !currentQuestion ? (
             <Text color="gray.400">No questions available.</Text>
           ) : (
-            <Box>
+            <Flex justify={"center"}>
               {isMultipleChoice && (
                 <MultipleChoiceActivityRunner
                   question={currentQuestion}
@@ -367,7 +612,7 @@ export const ActivityModal = ({ isOpen, onClose, activityId }) => {
               {isFlashcards && (
                 <FlashcardsActivityRunner question={currentQuestion} />
               )}
-            </Box>
+            </Flex>
           )}
         </ModalBody>
 
@@ -388,9 +633,9 @@ export const ActivityModal = ({ isOpen, onClose, activityId }) => {
               {clampedIndex >= questionCount - 1 ? (
                 <Button
                   colorScheme="blue"
-                  varianrt="solid"
+                  variant="solid"
                   cursor="pointer"
-                  onClick={goNext}
+                  onClick={isFlashcards ? handleClose : handleFinish}
                   transition="all 0.3s ease"
                   marginLeft={2}
                 >

@@ -1,13 +1,10 @@
 import axiosInstance from "./axiosInstance";
 
-// Auth API endpoints
 const authApi = {
-  // Register new user
   register: async (userData) => {
     try {
       const response = await axiosInstance.post("auth/register", userData);
 
-      // Save token to localStorage
       if (response.data.token) {
         localStorage.setItem("authToken", response.data.token);
       }
@@ -18,12 +15,12 @@ const authApi = {
     }
   },
 
-  // Login user
+  //login
   login: async (credentials) => {
     try {
       const response = await axiosInstance.post("auth/login", credentials);
 
-      // Save token to localStorage
+      // Save token
       if (response.data.token) {
         localStorage.setItem("authToken", response.data.token);
       }
@@ -44,27 +41,24 @@ const authApi = {
     }
   },
 
-  // Logout user
+  //logout
   logout: () => {
     localStorage.removeItem("authToken");
     localStorage.removeItem("sessionToken");
-    window.location.href = "/#/login";
+    window.location.href = "/#";
   },
 
-  // Check if user is authenticated
   isAuthenticated: () => {
     return !!localStorage.getItem("authToken");
   },
 
-  // Get stored token
+  //get token
   getToken: () => {
     return localStorage.getItem("authToken");
   },
 };
 
-// Export as default for backward compatibility
 export default authApi;
 
-// Also export individual functions for named imports
 export const { register, login, verify, logout, isAuthenticated, getToken } =
   authApi;

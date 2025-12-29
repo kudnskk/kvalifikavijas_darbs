@@ -18,20 +18,12 @@ import {
   Button,
   useToast,
   HStack,
-  AlertDialog,
-  AlertDialogOverlay,
-  AlertDialogContent,
-  AlertDialogHeader,
-  AlertDialogBody,
-  AlertDialogFooter,
-  useDisclosure,
 } from "@chakra-ui/react";
 import { useNavigate } from "react-router-dom";
 import { userApi, authApi } from "../api";
 
 const Profile = () => {
   const toast = useToast();
-  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [user, setUser] = useState(null);
   const [stats, setStats] = useState({
@@ -40,10 +32,6 @@ const Profile = () => {
   });
 
   const [password, setPassword] = useState("");
-  const [isDeleting, setIsDeleting] = useState(false);
-
-  const { isOpen, onOpen, onClose } = useDisclosure();
-  const cancelRef = React.useRef();
 
   const getProfileData = async () => {
     setIsLoading(true);
@@ -103,11 +91,10 @@ const Profile = () => {
       });
       return;
     }
-    onOpen();
+    handleConfirmDelete();
   };
 
   const handleConfirmDelete = async () => {
-    setIsDeleting(true);
     try {
       const res = await userApi.deleteMe({ password: password.trim() });
 
@@ -137,9 +124,6 @@ const Profile = () => {
         duration: 3000,
         isClosable: true,
       });
-    } finally {
-      setIsDeleting(false);
-      onClose();
     }
   };
 
@@ -193,6 +177,7 @@ const Profile = () => {
                 <FormLabel color="gray.300">Password</FormLabel>
                 <Input
                   type="password"
+                  autoComplete="new-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
@@ -201,19 +186,10 @@ const Profile = () => {
                 />
               </FormControl>
 
-              <HStack justify="space-between">
-                <Button
-                  variant="outline"
-                  colorScheme="blue"
-                  onClick={() => navigate("/dashboard")}
-                >
-                  Back to Dashboard
-                </Button>
-
+              <HStack justify="flex-end">
                 <Button
                   colorScheme="red"
                   onClick={handleDeleteClick}
-                  isLoading={isDeleting}
                   isDisabled={isLoading}
                 >
                   Delete account
@@ -223,40 +199,6 @@ const Profile = () => {
           </CardBody>
         </Card>
       </Container>
-
-      <AlertDialog
-        isOpen={isOpen}
-        leastDestructiveRef={cancelRef}
-        onClose={onClose}
-        isCentered
-      >
-        <AlertDialogOverlay>
-          <AlertDialogContent bg="#0B1220" color="white" borderColor="#334155">
-            <AlertDialogHeader fontSize="lg" fontWeight="bold">
-              Confirm deletion
-            </AlertDialogHeader>
-
-            <AlertDialogBody>
-              Are you sure you want to permanently delete your account? (Vai jūs
-              tiešām gribāt neatgriezeniski dzēst savu kontu?)
-            </AlertDialogBody>
-
-            <AlertDialogFooter>
-              <Button ref={cancelRef} onClick={onClose} variant="outline">
-                Cancel
-              </Button>
-              <Button
-                colorScheme="red"
-                onClick={handleConfirmDelete}
-                ml={3}
-                isLoading={isDeleting}
-              >
-                Delete
-              </Button>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialogOverlay>
-      </AlertDialog>
     </Box>
   );
 };

@@ -72,6 +72,7 @@ const Chat = () => {
   const toast = useToast();
   const messagesEndRef = useRef(null);
   const scrollContainerRef = useRef(null);
+  const didInitialScrollRef = useRef(false);
   const {
     isOpen: isFileViewerOpen,
     onOpen: onFileViewerOpen,
@@ -153,7 +154,6 @@ const Chat = () => {
         socket.emit("join_lesson_room", id);
       };
 
-      // Debug: confirm the socket is connected
       const onConnect = () => {
         console.log("[socket] connected", socket.id);
         joinRoom();
@@ -183,6 +183,28 @@ const Chat = () => {
       };
     }
   }, [id]);
+
+  useEffect(() => {
+    didInitialScrollRef.current = false;
+  }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
+    if (!selectedLesson) return;
+    if (!Array.isArray(messages)) return;
+    if (didInitialScrollRef.current) return;
+
+    const raf = requestAnimationFrame(() => {
+      messagesEndRef.current?.scrollIntoView({
+        behavior: "auto",
+        block: "end",
+      });
+    });
+
+    didInitialScrollRef.current = true;
+
+    return () => cancelAnimationFrame(raf);
+  }, [id, selectedLesson, messages?.length]);
 
   // message typing logic
   const handleTyping = (e) => {

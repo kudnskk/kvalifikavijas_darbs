@@ -389,6 +389,34 @@ const getActivityById = async (req, res) => {
       answers: answersByQuestionId[String(q._id)] || [],
     }));
 
+    let attemptsWithAnswers = [];
+    if (activity.type === "multiple-choice" || activity.type === "text") {
+      const attempts = await ActivityAttempt.find({ activity_id: activityId })
+        .sort({ createdAt: 1 })
+        .lean();
+
+      const attemptIds = attempts.map((a) => a._id);
+      const attemptAnswers = attemptIds.length
+        ? await ActivityAttemptAnswer.find({
+            activity_attempt_id: { $in: attemptIds },
+          })
+            .sort({ createdAt: 1 })
+            .lean()
+        : [];
+
+      const answersByAttemptId = attemptAnswers.reduce((acc, ans) => {
+        const key = String(ans.activity_attempt_id);
+        if (!acc[key]) acc[key] = [];
+        acc[key].push(ans);
+        return acc;
+      }, {});
+
+      attemptsWithAnswers = attempts.map((a) => ({
+        ...a,
+        answers: answersByAttemptId[String(a._id)] || [],
+      }));
+    }
+
     return res.status(200).json({
       status: true,
       message: "Activity fetched successfully",
@@ -401,12 +429,86 @@ const getActivityById = async (req, res) => {
               : "",
         },
         questions: questionsWithAnswers,
+        attempts: attemptsWithAnswers,
       },
     });
   } catch (error) {
     return res.status(500).json({
       status: false,
       message: "Failed to fetch activity",
+      error: error.message,
+    });
+  }
+};
+
+const getActivityAttemptsByActivityId = async (req, res) => {
+  try {
+    const userId = res.locals.user.id;
+    const { activityId } = req.params;
+
+    const activity = await Activity.findById(activityId).lean();
+    if (!activity) {
+      return res.status(404).json({
+        status: false,
+        message: "Activity not found",
+      });
+    }
+
+    const lesson = await Lesson.findOne({
+      _id: activity.lesson_id,
+      user_id: userId,
+    }).lean();
+
+    if (!lesson) {
+      return res.status(404).json({
+        status: false,
+        message: "Lesson not found or does not belong to user",
+      });
+    }
+
+    // Only meaningful for graded activities.
+    if (activity.type !== "multiple-choice" && activity.type !== "text") {
+      return res.status(200).json({
+        status: true,
+        message: "Attempts fetched successfully",
+        data: { attempts: [] },
+      });
+    }
+
+    const attempts = await ActivityAttempt.find({ activity_id: activityId })
+      .sort({ createdAt: 1 })
+      .lean();
+
+    const attemptIds = attempts.map((a) => a._id);
+    const attemptAnswers = attemptIds.length
+      ? await ActivityAttemptAnswer.find({
+          activity_attempt_id: { $in: attemptIds },
+        })
+          .sort({ createdAt: 1 })
+          .lean()
+      : [];
+
+    const answersByAttemptId = attemptAnswers.reduce((acc, ans) => {
+      const key = String(ans.activity_attempt_id);
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(ans);
+      return acc;
+    }, {});
+
+    const attemptsWithAnswers = attempts.map((a) => ({
+      ...a,
+      answers: answersByAttemptId[String(a._id)] || [],
+    }));
+
+    return res.status(200).json({
+      status: true,
+      message: "Attempts fetched successfully",
+      data: { attempts: attemptsWithAnswers },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: false,
+      message: "Failed to fetch attempts",
       error: error.message,
     });
   }
@@ -600,5 +702,6 @@ module.exports = {
   createActivity,
   getActivitiesByLessonId,
   getActivityById,
+  getActivityAttemptsByActivityId,
   submitActivityAttempt,
 };
