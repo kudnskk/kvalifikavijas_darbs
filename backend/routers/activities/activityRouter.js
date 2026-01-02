@@ -7,11 +7,17 @@ const {
   getActivitiesByLessonId,
   getActivityById,
   submitActivityAttempt,
+  explainActivityAttemptMistakes,
 } = require("../../controllers/activities/activity");
 
 router.post("/create-activity", protect, createActivity);
 router.get("/get-by-lesson/:lessonId", protect, getActivitiesByLessonId);
 router.get("/get/:activityId", protect, getActivityById);
 router.post("/submit-attempt/:activityId", protect, submitActivityAttempt);
+router.post(
+  "/explain-mistakes/:activityId/:attemptId",
+  protect,
+  explainActivityAttemptMistakes,
+);
 
 module.exports = router;

@@ -1,13 +1,7 @@
 import React from "react";
 import { Box, Text, Textarea, VStack } from "@chakra-ui/react";
 
-const FreeTextActivityRunner = ({
-  question,
-  value,
-  onChange,
-  isReadOnly,
-  result,
-}) => {
+const FreeTextActivityRunner = ({ question, value, onChange, isReadOnly }) => {
   return (
     <VStack align="stretch" spacing={4}>
       <Box>
@@ -17,15 +11,6 @@ const FreeTextActivityRunner = ({
         <Text color="white" whiteSpace="pre-wrap">
           {question?.question || ""}
         </Text>
-        {typeof result?.is_correct === "boolean" && (
-          <Text
-            mt={2}
-            fontSize="sm"
-            color={result.is_correct ? "#3B82F6" : "gray.400"}
-          >
-            {result.is_correct ? "Correct" : "Incorrect"}
-          </Text>
-        )}
       </Box>
 
       <Box>

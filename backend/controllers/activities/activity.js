@@ -9,6 +9,7 @@ const ActivityAttemptAnswer = require("../../models/attempt/activity_attempt_ans
 const {
   generateActivityData,
   gradeFreeTextAnswers,
+  explainActivityMistakes,
 } = require("../../utils/assistantInstructions");
 
 const mapRequestTypeToModel = (type) => {
@@ -245,8 +246,6 @@ const createActivity = async (req, res) => {
                 question_id: questionId,
               });
             }
-          } else if (modelActivityType === "text") {
-            // For now: store no answers for free-text activities
           } else if (modelActivityType === "flashcard") {
             const back = String(item.back || "").trim();
             answerDocs.push({
@@ -698,10 +697,162 @@ const submitActivityAttempt = async (req, res) => {
   }
 };
 
+const explainActivityAttemptMistakes = async (req, res) => {
+  try {
+    const userId = res.locals.user.id;
+    const { activityId, attemptId } = req.params;
+
+    const activity = await Activity.findById(activityId).lean();
+    if (!activity) {
+      return res
+        .status(404)
+        .json({ status: false, message: "Activity not found" });
+    }
+
+    // Ownership check via lesson ownership.
+    const lesson = await Lesson.findOne({
+      _id: activity.lesson_id,
+      user_id: userId,
+    }).lean();
+    if (!lesson) {
+      return res.status(404).json({
+        status: false,
+        message: "Lesson not found or does not belong to user",
+      });
+    }
+
+    if (activity.type !== "multiple-choice" && activity.type !== "text") {
+      return res
+        .status(400)
+        .json({ status: false, message: "Unsupported activity type" });
+    }
+
+    const attempt = await ActivityAttempt.findOne({
+      _id: attemptId,
+      activity_id: activityId,
+    }).lean();
+    if (!attempt) {
+      return res.status(404).json({
+        status: false,
+        message: "Attempt not found",
+      });
+    }
+
+    const attemptAnswers = await ActivityAttemptAnswer.find({
+      activity_attempt_id: attemptId,
+    })
+      .sort({ createdAt: 1 })
+      .lean();
+
+    const wrongAttemptAnswers = attemptAnswers.filter((a) => !a?.is_correct);
+    if (!wrongAttemptAnswers.length) {
+      return res.status(400).json({
+        status: false,
+        message: "No mistakes to explain",
+      });
+    }
+
+    const questions = await ActivityQuestion.find({ activity_id: activityId })
+      .sort({ createdAt: 1 })
+      .lean();
+    const questionsById = questions.reduce((acc, q) => {
+      acc[String(q._id)] = q;
+      return acc;
+    }, {});
+
+    let answersById = {};
+    if (activity.type === "multiple-choice") {
+      const questionIds = questions.map((q) => String(q._id));
+      const answers = await ActivityAnswer.find({
+        question_id: { $in: questionIds },
+      }).lean();
+      answersById = answers.reduce((acc, a) => {
+        acc[String(a._id)] = a;
+        return acc;
+      }, {});
+    }
+
+    const itemsForAi = wrongAttemptAnswers.map((wa) => {
+      const qid = String(wa.activity_question_id);
+      const q = questionsById[qid];
+      const questionText = String(q?.question || "");
+
+      if (activity.type === "multiple-choice") {
+        const selectedIds = Array.isArray(wa.activity_answer_id)
+          ? wa.activity_answer_id.map(String)
+          : [];
+
+        const selectedAnswersText = selectedIds
+          .map((id) => answersById[id])
+          .filter(Boolean)
+          .map((a) => String(a.answer || ""))
+          .filter(Boolean);
+
+        const correctAnswersText = Object.values(answersById)
+          .filter(
+            (a) =>
+              String(a.question_id) === qid &&
+              Boolean(a.is_correct) &&
+              typeof a.answer === "string" &&
+              a.answer.trim(),
+          )
+          .map((a) => a.answer.trim());
+
+        return {
+          question_id: qid,
+          question: questionText,
+          user_selected_answers: selectedAnswersText,
+          correct_answers: correctAnswersText,
+        };
+      }
+
+      // free-text
+      return {
+        question_id: qid,
+        question: questionText,
+        user_answer: String(wa.text_answer || "").trim(),
+      };
+    });
+
+    const explained = await explainActivityMistakes({
+      lessonId: activity.lesson_id,
+      items: itemsForAi,
+    });
+
+    if (explained.status !== "ok") {
+      return res.status(400).json({
+        status: false,
+        message: explained?.error?.message || "Failed to explain mistakes",
+      });
+    }
+    console.log("explained", explained);
+
+    return res.status(200).json({
+      status: true,
+      message: "Mistakes explained",
+      data: {
+        attempt: {
+          _id: attempt._id,
+          score: attempt.score,
+          activity_id: activityId,
+        },
+        explanations: explained.explanations,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: false,
+      message: "Failed to explain mistakes",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   createActivity,
   getActivitiesByLessonId,
   getActivityById,
   getActivityAttemptsByActivityId,
   submitActivityAttempt,
+  explainActivityAttemptMistakes,
 };

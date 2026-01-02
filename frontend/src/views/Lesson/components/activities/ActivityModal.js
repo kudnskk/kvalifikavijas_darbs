@@ -42,6 +42,10 @@ export const ActivityModal = ({ isOpen, onClose, activityId }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [attemptResult, setAttemptResult] = useState(null);
 
+  const [isExplaining, setIsExplaining] = useState(false);
+  const [mistakeExplanations, setMistakeExplanations] = useState(null);
+  const [mistakesAttemptId, setMistakesAttemptId] = useState(null);
+
   const [
     multipleChoiceAnswersByQuestionId,
     setMultipleChoiceAnswersByQuestionId,
@@ -64,7 +68,9 @@ export const ActivityModal = ({ isOpen, onClose, activityId }) => {
   const isFreeText = activityType === "text";
   const isFlashcards = activityType === "flashcards";
 
-  const resultsByQuestionId = useMemo(() => {
+  const isShowingResults = Boolean(attemptResult);
+
+  const attemptResultsByQuestionId = useMemo(() => {
     const results = Array.isArray(attemptResult?.results)
       ? attemptResult.results
       : [];
@@ -75,6 +81,9 @@ export const ActivityModal = ({ isOpen, onClose, activityId }) => {
   }, [attemptResult]);
 
   const questionCount = questions.length;
+  const maxScore =
+    activity?.max_score ?? activity?.question_count ?? questionCount;
+  const isShowingMistakes = Boolean(mistakesAttemptId);
   const clampedIndex = Math.min(
     Math.max(currentQuestionIndex, 0),
     Math.max(questionCount - 1, 0)
@@ -181,6 +190,113 @@ export const ActivityModal = ({ isOpen, onClose, activityId }) => {
     setCurrentQuestionIndex(0);
   };
 
+  const handleBackToStart = () => {
+    setIsStarted(false);
+    setCurrentQuestionIndex(0);
+    setMultipleChoiceAnswersByQuestionId({});
+    setFreeTextAnswersByQuestionId({});
+    setAttemptResult(null);
+    setIsSubmitting(false);
+
+    setMistakeExplanations(null);
+    setMistakesAttemptId(null);
+    setIsExplaining(false);
+
+    if (!activityId) return;
+
+    (async () => {
+      setIsHistoryLoading(true);
+      try {
+        const response = await activityApi.getActivityById(activityId);
+        if (!response?.status) {
+          throw new Error(response?.message || "Failed to load activity");
+        }
+
+        setActivityData(response.data);
+
+        const loadedType = response?.data?.activity?.type;
+        if (loadedType === "multiple-choice" || loadedType === "text") {
+          setAttemptHistory(
+            Array.isArray(response?.data?.attempts)
+              ? response.data.attempts
+              : []
+          );
+        } else {
+          setAttemptHistory([]);
+        }
+      } catch (err) {
+        toast({
+          title: "Error",
+          description: err?.message || "Failed to load activity",
+          status: "error",
+          duration: 4000,
+          isClosable: true,
+        });
+      } finally {
+        setIsHistoryLoading(false);
+      }
+    })();
+  };
+
+  const handleExplainMistakes = async (attemptId) => {
+    if (!activityId || !attemptId) return;
+    if (isFlashcards) return;
+    if (!(isMultipleChoice || isFreeText)) return;
+    if (isExplaining) return;
+
+    setIsExplaining(true);
+    setMistakeExplanations(null);
+    setMistakesAttemptId(String(attemptId));
+    try {
+      console.log("Calling explainMistakes API with:", {
+        activityId,
+        attemptId,
+      });
+      const response = await activityApi.explainMistakes(activityId, attemptId);
+      console.log("API response received:", response);
+
+      if (!response?.status) {
+        console.error("Response status is falsy:", response);
+        throw new Error(response?.message || "Failed to explain mistakes");
+      }
+
+      console.log("Response data:", response?.data);
+      const explanations = Array.isArray(response?.data?.explanations)
+        ? response.data.explanations
+        : [];
+
+      console.log("Extracted explanations:", explanations);
+
+      if (!explanations.length) {
+        throw new Error("No explanations returned");
+      }
+
+      setMistakeExplanations(explanations);
+      console.log("Mistake explanations set successfully");
+    } catch (err) {
+      console.error("Error in handleExplainMistakes:", err);
+      console.error("Error details:", {
+        message: err?.message,
+        response: err?.response,
+        data: err?.response?.data,
+      });
+      toast({
+        title: "Error",
+        description:
+          err?.message ||
+          err?.response?.data?.message ||
+          "Failed to explain mistakes",
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+      setMistakeExplanations(null);
+      setMistakesAttemptId(null);
+    } finally {
+      setIsExplaining(false);
+    }
+  };
+
   const goPrev = () => {
     setCurrentQuestionIndex((idx) => {
       if (idx <= 0) {
@@ -246,7 +362,7 @@ export const ActivityModal = ({ isOpen, onClose, activityId }) => {
         >
           <Text noOfLines={1}>{headerTitle}</Text>
           <Flex align="center" justify={"center"} w="100%">
-            {isStarted && questionCount > 0 && (
+            {isStarted && !isShowingResults && questionCount > 0 && (
               <Text color="gray.300" fontSize="sm" whiteSpace="nowrap">
                 {`Question ${clampedIndex + 1} / ${questionCount}`}
               </Text>
@@ -263,6 +379,244 @@ export const ActivityModal = ({ isOpen, onClose, activityId }) => {
             </Flex>
           ) : !activity ? (
             <Text color="gray.400">No activity loaded.</Text>
+          ) : isShowingMistakes && (isMultipleChoice || isFreeText) ? (
+            <VStack align="stretch" spacing={4}>
+              <Box>
+                <Text color="gray.200" fontWeight="semibold" mb={2}>
+                  Mistakes explanation
+                </Text>
+
+                {isExplaining ? (
+                  <Flex align="center" justify="center" py={6}>
+                    <Spinner color="#3B82F6" thickness="3px" />
+                  </Flex>
+                ) : !mistakeExplanations || mistakeExplanations.length === 0 ? (
+                  <Text color="gray.400" fontSize="sm">
+                    No mistakes to explain.
+                  </Text>
+                ) : (
+                  <VStack align="stretch" spacing={3}>
+                    {mistakeExplanations.map((ex, idx) => {
+                      const qid = String(ex?.question_id || "");
+                      const q = questions.find((qq) => String(qq._id) === qid);
+
+                      return (
+                        <Box
+                          key={qid || idx}
+                          bg="#0F172A"
+                          border="1px solid"
+                          borderColor="#334155"
+                          borderRadius="md"
+                          p={4}
+                        >
+                          <Text color="gray.300" fontSize="sm" mb={2}>
+                            {q ? q.question : `Question ${idx + 1}`}
+                          </Text>
+                          <Divider borderColor="#334155" mb={3} />
+                          <Text color="white" whiteSpace="pre-wrap" mb={3}>
+                            {String(ex?.explanation || "")}
+                          </Text>
+                          <Text color="gray.300" fontSize="sm" mb={1}>
+                            Correct answer
+                          </Text>
+                          <Text color="gray.200" whiteSpace="pre-wrap">
+                            {String(ex?.correct_answer || "")}
+                          </Text>
+                        </Box>
+                      );
+                    })}
+                  </VStack>
+                )}
+              </Box>
+            </VStack>
+          ) : isStarted &&
+            isShowingResults &&
+            (isMultipleChoice || isFreeText) ? (
+            <VStack align="stretch" spacing={4}>
+              <Box
+                bg="#0F172A"
+                border="1px solid"
+                borderColor="#334155"
+                borderRadius="md"
+                p={4}
+              >
+                <Text color="gray.300" fontSize="sm" mb={1}>
+                  Score
+                </Text>
+                <Text color="white" fontSize="2xl" fontWeight="semibold">
+                  {`${Number(attemptResult?.attempt?.score || 0)}/${
+                    activity?.max_score ??
+                    activity?.question_count ??
+                    questionCount
+                  }`}
+                </Text>
+              </Box>
+
+              <Box>
+                <Text color="gray.200" fontWeight="semibold" mb={2}>
+                  Attempt details
+                </Text>
+
+                <Accordion allowMultiple>
+                  <AccordionItem borderColor="#334155">
+                    <AccordionButton bg="#0F172A" _hover={{ bg: "#0F172A" }}>
+                      <Flex align="center" justify="space-between" w="100%">
+                        <Text color="white" fontWeight="semibold">
+                          This attempt
+                        </Text>
+                        <Flex align="center" gap={3}>
+                          <Text color="gray.300" fontSize="sm">
+                            {`${Number(
+                              attemptResult?.attempt?.score || 0
+                            )}/${maxScore}`}
+                          </Text>
+                          <AccordionIcon color="gray.300" />
+                        </Flex>
+                      </Flex>
+                    </AccordionButton>
+
+                    <AccordionPanel bg="#1E293B">
+                      <Flex justify={"flex-end"} mb={2}>
+                        <Button
+                          colorScheme="red"
+                          variant="solid"
+                          isDisabled={
+                            Number(attemptResult?.attempt?.score) ===
+                            Number(maxScore)
+                          }
+                          cursor="pointer"
+                          onClick={() =>
+                            handleExplainMistakes(attemptResult?.attempt?._id)
+                          }
+                          transition="all 0.3s ease"
+                        >
+                          EXPLAIN MISTAKES
+                        </Button>
+                      </Flex>
+                      <VStack align="stretch" spacing={3}>
+                        {questions.map((q, idx) => {
+                          const qid = String(q._id);
+                          const attemptAnswer = attemptResultsByQuestionId[qid];
+
+                          const selectedAnswerIds = Array.isArray(
+                            attemptAnswer?.selected_answer_ids
+                          )
+                            ? attemptAnswer.selected_answer_ids.map(String)
+                            : [];
+
+                          const isCorrect = Boolean(attemptAnswer?.is_correct);
+
+                          return (
+                            <Box
+                              key={q._id || idx}
+                              bg="#0F172A"
+                              border="1px solid"
+                              borderColor="#334155"
+                              borderRadius="md"
+                              p={3}
+                            >
+                              <Text color="gray.300" fontSize="sm" mb={2}>
+                                {idx + 1}.
+                              </Text>
+                              <Text color="white" mb={2} whiteSpace="pre-wrap">
+                                {q.question}
+                              </Text>
+
+                              {isMultipleChoice &&
+                                Array.isArray(q.answers) &&
+                                q.answers.length > 0 && (
+                                  <VStack align="stretch" spacing={2}>
+                                    {q.answers.map((a, ai) => {
+                                      const aid = String(a._id);
+                                      const isSelected =
+                                        selectedAnswerIds.includes(aid);
+                                      const isSelectedCorrect =
+                                        isSelected && a.is_correct;
+                                      const isSelectedWrong =
+                                        isSelected && !a.is_correct;
+
+                                      return (
+                                        <Flex
+                                          key={a._id || ai}
+                                          align="center"
+                                          justify="space-between"
+                                          bg={
+                                            isSelectedCorrect
+                                              ? "green.900"
+                                              : isSelectedWrong
+                                              ? "red.900"
+                                              : "#1E293B"
+                                          }
+                                          borderRadius="md"
+                                          px={3}
+                                          py={2}
+                                          border="1px solid"
+                                          borderColor={
+                                            isSelectedCorrect
+                                              ? "green.400"
+                                              : isSelectedWrong
+                                              ? "red.400"
+                                              : "#334155"
+                                          }
+                                        >
+                                          <Text color="gray.200">
+                                            {a.answer}
+                                          </Text>
+                                          {a.is_correct ? (
+                                            <Text color="#3B82F6" fontSize="sm">
+                                              correct
+                                            </Text>
+                                          ) : (
+                                            <Text
+                                              color="gray.500"
+                                              fontSize="sm"
+                                            ></Text>
+                                          )}
+                                        </Flex>
+                                      );
+                                    })}
+                                  </VStack>
+                                )}
+
+                              {isFreeText && (
+                                <Box>
+                                  <Flex
+                                    align="center"
+                                    justify="space-between"
+                                    bg={isCorrect ? "green.900" : "red.900"}
+                                    borderRadius="md"
+                                    px={3}
+                                    py={2}
+                                    border="1px solid"
+                                    borderColor={
+                                      isCorrect ? "green.400" : "red.400"
+                                    }
+                                  >
+                                    <Text color="gray.200">
+                                      {String(
+                                        attemptAnswer?.text_answer || ""
+                                      ) || "(no answer)"}
+                                    </Text>
+                                    <Text
+                                      color={
+                                        isCorrect ? "green.200" : "red.200"
+                                      }
+                                      fontSize="sm"
+                                    >
+                                      {isCorrect ? "correct" : "wrong"}
+                                    </Text>
+                                  </Flex>
+                                </Box>
+                              )}
+                            </Box>
+                          );
+                        })}
+                      </VStack>
+                    </AccordionPanel>
+                  </AccordionItem>
+                </Accordion>
+              </Box>
+            </VStack>
           ) : !isStarted ? (
             <VStack align="stretch" spacing={4}>
               <Box>
@@ -312,10 +666,7 @@ export const ActivityModal = ({ isOpen, onClose, activityId }) => {
                     ) : (
                       <Accordion allowMultiple>
                         {attemptHistory.map((attempt, attemptIndex) => {
-                          const maxScore =
-                            activity?.max_score ??
-                            activity?.question_count ??
-                            questionCount;
+                          const maxScore = activity?.max_score;
                           const score = Number(attempt?.score || 0);
                           const attemptAnswers = Array.isArray(attempt?.answers)
                             ? attempt.answers
@@ -353,6 +704,22 @@ export const ActivityModal = ({ isOpen, onClose, activityId }) => {
                               </AccordionButton>
 
                               <AccordionPanel bg="#1E293B">
+                                <Flex justify={"flex-end"} mb={2}>
+                                  <Button
+                                    colorScheme="red"
+                                    variant="solid"
+                                    isDisabled={
+                                      score === maxScore ? true : false
+                                    }
+                                    cursor="pointer"
+                                    onClick={() =>
+                                      handleExplainMistakes(attempt?._id)
+                                    }
+                                    transition="all 0.3s ease"
+                                  >
+                                    EXPLAIN MISTAKES
+                                  </Button>
+                                </Flex>
                                 <VStack align="stretch" spacing={3}>
                                   {questions.map((q, idx) => {
                                     const qid = String(q._id);
@@ -578,10 +945,9 @@ export const ActivityModal = ({ isOpen, onClose, activityId }) => {
                       String(currentQuestion._id)
                     ] || []
                   }
-                  isReadOnly={Boolean(attemptResult) || isSubmitting}
-                  result={resultsByQuestionId[String(currentQuestion._id)]}
+                  isReadOnly={Boolean(isSubmitting)}
                   onChange={(nextSelectedIds) => {
-                    if (attemptResult || isSubmitting) return;
+                    if (isSubmitting) return;
                     setMultipleChoiceAnswersByQuestionId((prev) => ({
                       ...prev,
                       [String(currentQuestion._id)]: nextSelectedIds,
@@ -597,10 +963,9 @@ export const ActivityModal = ({ isOpen, onClose, activityId }) => {
                     freeTextAnswersByQuestionId[String(currentQuestion._id)] ||
                     ""
                   }
-                  isReadOnly={Boolean(attemptResult) || isSubmitting}
-                  result={resultsByQuestionId[String(currentQuestion._id)]}
+                  isReadOnly={Boolean(isSubmitting)}
                   onChange={(nextText) => {
-                    if (attemptResult || isSubmitting) return;
+                    if (isSubmitting) return;
                     setFreeTextAnswersByQuestionId((prev) => ({
                       ...prev,
                       [String(currentQuestion._id)]: nextText,
@@ -617,45 +982,81 @@ export const ActivityModal = ({ isOpen, onClose, activityId }) => {
         </ModalBody>
 
         <ModalFooter>
-          {isStarted && questionCount > 0 && (
-            <Flex align="center" w="100%" justify="space-between" mt={5}>
+          {isShowingMistakes && (isMultipleChoice || isFreeText) && (
+            <Flex align="center" w="100%" justify="flex-end" mt={5}>
               <Button
                 colorScheme="blue"
-                varianrt="solid"
+                variant="solid"
                 cursor="pointer"
-                onClick={goPrev}
+                onClick={handleBackToStart}
                 transition="all 0.3s ease"
                 marginLeft={2}
               >
-                PREV
+                BACK TO START
               </Button>
+            </Flex>
+          )}
 
-              {clampedIndex >= questionCount - 1 ? (
+          {isStarted &&
+            !isShowingMistakes &&
+            isShowingResults &&
+            (isMultipleChoice || isFreeText) && (
+              <Flex align="center" w="100%" justify="flex-end" mt={5}>
                 <Button
                   colorScheme="blue"
                   variant="solid"
                   cursor="pointer"
-                  onClick={isFlashcards ? handleClose : handleFinish}
+                  onClick={handleBackToStart}
                   transition="all 0.3s ease"
                   marginLeft={2}
                 >
-                  FINISH
+                  BACK TO START
                 </Button>
-              ) : (
+              </Flex>
+            )}
+
+          {isStarted &&
+            !isShowingResults &&
+            !isShowingMistakes &&
+            questionCount > 0 && (
+              <Flex align="center" w="100%" justify="space-between" mt={5}>
                 <Button
                   colorScheme="blue"
                   varianrt="solid"
                   cursor="pointer"
-                  onClick={goNext}
+                  onClick={goPrev}
                   transition="all 0.3s ease"
                   marginLeft={2}
                 >
-                  NEXT
+                  PREV
                 </Button>
-              )}
-            </Flex>
-          )}
-          {!isStarted && (
+
+                {clampedIndex >= questionCount - 1 ? (
+                  <Button
+                    colorScheme="blue"
+                    variant="solid"
+                    cursor="pointer"
+                    onClick={isFlashcards ? handleClose : handleFinish}
+                    transition="all 0.3s ease"
+                    marginLeft={2}
+                  >
+                    FINISH
+                  </Button>
+                ) : (
+                  <Button
+                    colorScheme="blue"
+                    varianrt="solid"
+                    cursor="pointer"
+                    onClick={goNext}
+                    transition="all 0.3s ease"
+                    marginLeft={2}
+                  >
+                    NEXT
+                  </Button>
+                )}
+              </Flex>
+            )}
+          {!isStarted && !isShowingMistakes && (
             <Button
               colorScheme="blue"
               varianrt="solid"

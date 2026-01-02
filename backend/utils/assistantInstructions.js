@@ -207,6 +207,36 @@ const freeTextGradingJsonSchema = {
   required: ["status", "error", "results"],
 };
 
+const mistakeExplanationJsonSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    status: { type: "string", enum: ["ok", "error"] },
+    error: {
+      type: ["object", "null"],
+      additionalProperties: false,
+      properties: {
+        message: { type: "string" },
+      },
+      required: ["message"],
+    },
+    explanations: {
+      type: ["array", "null"],
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          question_id: { type: "string" },
+          explanation: { type: "string" },
+          correct_answer: { type: "string" },
+        },
+        required: ["question_id", "explanation", "correct_answer"],
+      },
+    },
+  },
+  required: ["status", "error", "explanations"],
+};
+
 const gradeFreeTextAnswers = async ({ lessonId, items }) => {
   const lesson = await Lesson.findById(lessonId).lean();
   if (!lesson) {
@@ -326,6 +356,120 @@ Items:\n${JSON.stringify(
       status: "error",
       error: { message: "Failed to parse grading output as JSON" },
       results: null,
+    };
+  }
+};
+
+const explainActivityMistakes = async ({ lessonId, items }) => {
+  const lesson = await Lesson.findById(lessonId).lean();
+  if (!lesson) {
+    return {
+      status: "error",
+      error: { message: "Lesson not found" },
+      explanations: null,
+    };
+  }
+
+  const safeItems = Array.isArray(items) ? items : [];
+  if (!safeItems.length) {
+    return {
+      status: "error",
+      error: { message: "No mistakes to explain" },
+      explanations: null,
+    };
+  }
+
+  const previousMessages = await Message.find({ lesson_id: lessonId })
+    .sort({ createdAt: -1 })
+    .limit(20)
+    .lean();
+  previousMessages.reverse();
+
+  const historyAsInput = previousMessages.map(formatMessageForModel);
+
+  const prompt = `Lesson: "${
+    lesson.title
+  }"\n\nExplain why each user's answer is wrong and what a correct answer should be.\nReturn JSON strictly matching the schema.\n\nItems:\n${JSON.stringify(
+    safeItems.map((it) => ({
+      question_id: String(it.question_id || ""),
+      question: String(it.question || ""),
+      user_answer: it.user_answer ?? "",
+      user_selected_answers: Array.isArray(it.user_selected_answers)
+        ? it.user_selected_answers
+        : undefined,
+      correct_answers: Array.isArray(it.correct_answers)
+        ? it.correct_answers
+        : undefined,
+    })),
+    null,
+    2,
+  )}`;
+
+  let response;
+  try {
+    response = await withTimeout(
+      client.responses.create({
+        model: "gpt-5-mini",
+        instructions:
+          "Explain mistakes briefly and provide the correct answer.",
+        input: [...historyAsInput, { role: "user", content: prompt }],
+        text: {
+          format: {
+            type: "json_schema",
+            name: "mistake_explanations",
+            strict: true,
+            schema: mistakeExplanationJsonSchema,
+          },
+        },
+        max_output_tokens: 2048,
+        reasoning: { effort: "low" },
+      }),
+      45000,
+      "OpenAI mistake explanations",
+    );
+  } catch (error) {
+    console.error("Mistake explanations failed:", error?.message || error);
+    return {
+      status: "error",
+      error: {
+        message: error,
+      },
+      explanations: null,
+    };
+  }
+
+  try {
+    const out = JSON.parse(response.output_text);
+    if (!out || (out.status !== "ok" && out.status !== "error")) {
+      return {
+        status: "error",
+        error: { message: "Model returned invalid status" },
+        explanations: null,
+      };
+    }
+
+    if (out.status === "error") {
+      return {
+        status: "error",
+        error: { message: out?.error?.message || "Explanation failed" },
+        explanations: null,
+      };
+    }
+
+    if (!Array.isArray(out.explanations) || out.explanations.length === 0) {
+      return {
+        status: "error",
+        error: { message: "Model returned no explanations" },
+        explanations: null,
+      };
+    }
+
+    return out;
+  } catch (e) {
+    return {
+      status: "error",
+      error: { message: "Failed to parse explanation output as JSON" },
+      explanations: null,
     };
   }
 };
@@ -493,4 +637,5 @@ module.exports = {
   generateAIResponse,
   generateActivityData,
   gradeFreeTextAnswers,
+  explainActivityMistakes,
 };

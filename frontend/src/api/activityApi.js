@@ -55,6 +55,17 @@ const activityApi = {
       throw error.response?.data || error.message;
     }
   },
+
+  explainMistakes: async (activityId, attemptId) => {
+    try {
+      const response = await axiosInstance.post(
+        `activities/explain-mistakes/${activityId}/${attemptId}`
+      );
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
 };
 
 export default activityApi;
@@ -63,4 +74,5 @@ export const {
   getActivitiesByLessonId,
   getActivityById,
   submitAttempt,
+  explainMistakes,
 } = activityApi;

@@ -16,7 +16,6 @@ const MultipleChoiceActivityRunner = ({
   value,
   onChange,
   isReadOnly,
-  result,
 }) => {
   const answers = useMemo(() => normalizeAnswers(question), [question]);
   const selectedIds = Array.isArray(value) ? value : [];
@@ -40,15 +39,6 @@ const MultipleChoiceActivityRunner = ({
         <Text color="white" whiteSpace="pre-wrap">
           {question?.question || ""}
         </Text>
-        {typeof result?.is_correct === "boolean" && (
-          <Text
-            mt={2}
-            fontSize="sm"
-            color={result.is_correct ? "#3B82F6" : "gray.400"}
-          >
-            {result.is_correct ? "Correct" : "Incorrect"}
-          </Text>
-        )}
       </Box>
 
       <Box>
