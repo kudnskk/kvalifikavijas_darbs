@@ -7,7 +7,7 @@ const {
   getMe,
   deleteMe,
   adminListUsers,
-  adminBlockUser,
+  adminChangeUserStatus,
   adminDeleteUser,
 } = require("../../controllers/users/user");
 
@@ -16,6 +16,11 @@ router.get("/stats", protect, getDashboardStats);
 router.get("/me", protect, getMe);
 router.delete("/me", protect, deleteMe);
 
-router.get("/admin/users", protect, adminOnly, adminListUsers);
-router.patch("/admin/users/:userId/block", protect, adminOnly, adminBlockUser);
+router.get("/admin/get-users", protect, adminOnly, adminListUsers);
+router.patch(
+  "/admin/users/change-status/:userId",
+  protect,
+  adminOnly,
+  adminChangeUserStatus,
+);
 router.delete("/admin/users/:userId", protect, adminOnly, adminDeleteUser);

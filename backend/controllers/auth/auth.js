@@ -98,7 +98,6 @@ exports.register = async (req, res) => {
     const emailVerifyToken = Math.floor(Math.random() * 10000);
     newUser.is_email_verified = false;
     newUser.email_verify_token = emailVerifyToken;
-    await newUser.save();
     const msg = {
       to: newUser.email,
       subject: "Verify your Email",
@@ -108,7 +107,15 @@ exports.register = async (req, res) => {
     `,
       text: `Code: ${emailVerifyToken}`,
     };
-    await sendEmail(msg);
+    const result = await sendEmail(msg);
+
+    if (!result.accepted || result.accepted.length === 0) {
+      return res.status(500).json({
+        status: false,
+        message: "Error while sending email!",
+      });
+    }
+    await newUser.save(); //save only after email is sent successfully
     const token = await signToken(newUser._id, false); //token to be authed on the spot after registrations
 
     return res.status(201).json({
@@ -195,13 +202,21 @@ exports.forgotPasswordRequest = async (req, res) => {
     const resetToken = Math.floor(100000 + Math.random() * 900000); // 6-digit code
     user.password_reset_token = resetToken;
     user.password_reset_expires = Date.now() + 1000 * 60 * 15; // 15 min
-    await user.save();
-    await sendEmail({
+    const result = await sendEmail({
       to: user.email,
       subject: "Password Reset Code",
       html: `<p>Your password reset code is: <b>${resetToken}</b></p>`,
       text: `Your password reset code is: ${resetToken}`,
     });
+
+    if (!result.accepted || result.accepted.length === 0) {
+      return res.status(500).json({
+        status: false,
+        message: "Error while sending email!",
+      });
+    }
+    await user.save();
+
     return res
       .status(200)
       .json({ status: true, message: "Reset code sent to email" });

@@ -187,7 +187,7 @@ const Register = () => {
                   <InputRightElement>
                     <IconButton
                       variant="ghost"
-                      icon={showPassword ? <LuEyeClosed /> : <LuEye />}
+                      icon={showPassword ? <LuEye /> : <LuEyeClosed />}
                       onClick={() => setShowPassword(!showPassword)}
                     />
                   </InputRightElement>
@@ -211,7 +211,7 @@ const Register = () => {
                   <InputRightElement>
                     <IconButton
                       variant="ghost"
-                      icon={showConfirmPassword ? <LuEyeClosed /> : <LuEye />}
+                      icon={showConfirmPassword ? <LuEye /> : <LuEyeClosed />}
                       onClick={() =>
                         setShowConfirmPassword(!showConfirmPassword)
                       }

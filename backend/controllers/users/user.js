@@ -150,18 +150,7 @@ const deleteMe = async (req, res) => {
 
 const adminListUsers = async (req, res) => {
   try {
-    const search = String(req.query?.search || "").trim();
-
-    const query = search
-      ? {
-          $or: [
-            { email: { $regex: search, $options: "i" } },
-            { user_name: { $regex: search, $options: "i" } },
-          ],
-        }
-      : {};
-
-    const users = await User.find(query)
+    const users = await User.find()
       .select(
         "_id email user_name user_type is_blocked is_email_verified createdAt",
       )
@@ -171,7 +160,7 @@ const adminListUsers = async (req, res) => {
     if (!users || users.length === 0) {
       return res.status(404).json({
         status: false,
-        message: "No user found! (Lietotāji netika atrasti!)",
+        message: "No user found!",
       });
     }
 
@@ -199,7 +188,7 @@ const adminListUsers = async (req, res) => {
   }
 };
 
-const adminBlockUser = async (req, res) => {
+const adminChangeUserStatus = async (req, res) => {
   try {
     const { userId } = req.params;
 
@@ -207,28 +196,22 @@ const adminBlockUser = async (req, res) => {
     if (!user) {
       return res.status(404).json({
         status: false,
-        message: "User does not exist! (Lietotājs neeksistē!)",
+        message: "User does not exist!",
       });
     }
+    const isBlocked = user.is_blocked;
 
-    if (user.is_blocked) {
-      return res.status(200).json({
-        status: true,
-        message: "User blocked successfully! (Lietotājs nobloķēts veiksmīgi!)",
-      });
-    }
-
-    user.is_blocked = true;
+    user.is_blocked = !isBlocked;
     await user.save();
 
     return res.status(200).json({
       status: true,
-      message: "User blocked successfully! (Lietotājs nobloķēts veiksmīgi!)",
+      message: "User status changed successfully! ",
     });
   } catch (error) {
     return res.status(500).json({
       status: false,
-      message: "Failed to block user",
+      message: "Failed to change user status",
       error: error.message,
     });
   }
@@ -331,6 +314,6 @@ module.exports = {
   getDashboardStats,
   getUserStats: getDashboardStats,
   adminListUsers,
-  adminBlockUser,
+  adminChangeUserStatus,
   adminDeleteUser,
 };

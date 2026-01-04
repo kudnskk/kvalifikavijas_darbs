@@ -77,7 +77,17 @@ const getInstructionsForGeneratingActivity = (
   questionCount,
   description,
   type,
+  existingQuestions = null,
 ) => {
+  const regenerationNote =
+    existingQuestions && existingQuestions.length > 0
+      ? `\n\nIMPORTANT: This is a regeneration request. The user wants completely NEW and DIFFERENT questions from the previous ones. Here are the previous questions that you MUST NOT reuse or create similar versions of:\n${existingQuestions
+          .map((q, i) => `${i + 1}. ${q}`)
+          .join(
+            "\n",
+          )}\n\nGenerate entirely different questions on the same topic.`
+      : "";
+
   if (type === "multiple_choice") {
     return `Your task is to generate an educational multiple choice quiz. Only ask questions about the topic.
   -title: ${lessonTitle}
@@ -87,7 +97,7 @@ const getInstructionsForGeneratingActivity = (
   You MUST return JSON strictly matching the provided schema.
   In items array there are objects with question, answers array and correctAnswerIndices array.
   One question can have up to 3 correct answers. Answers array always has 4 options.
-  correctAnswerIndices always is array of numbers from 0 to 3 including.`;
+  correctAnswerIndices always is array of numbers from 0 to 3 including.${regenerationNote}`;
   } else if (type === "text") {
     return `Your task is to generate educational free-text questions. Only ask questions about the topic.
     -title: ${lessonTitle}
@@ -97,7 +107,7 @@ const getInstructionsForGeneratingActivity = (
    
     You MUST return JSON strictly matching the provided schema.
     In items array there are objects with question string and referenceAnswer string. 
-    referenceAnswer is a sample answer to the question.`;
+    referenceAnswer is a sample answer to the question.${regenerationNote}`;
   } else if (type === "flashcard") {
     return `Your task is to generate educational flashcards. Only ask questions about the topic.
     -title: ${lessonTitle}
@@ -107,11 +117,11 @@ const getInstructionsForGeneratingActivity = (
    
     You MUST return JSON strictly matching the provided schema.
     In items array there are objects wit front and back strings. 
-    Front is a term or a question on the front of the flashcard, back is a short definition or an answer on the back of the flashcard.`;
+    Front is a term or a question on the front of the flashcard, back is a short definition or an answer on the back of the flashcard.${regenerationNote}`;
   }
 
   return `Generate activity items for the lesson.
-You MUST return JSON strictly matching the provided schema.`;
+You MUST return JSON strictly matching the provided schema.${regenerationNote}`;
 };
 
 const multipleChoiceGenerationSchema = {
@@ -537,6 +547,7 @@ const generateActivityData = async ({
   questionCount,
   title,
   description,
+  existingQuestions = null,
 }) => {
   const lesson = await Lesson.findById(lessonId).lean();
 
@@ -582,6 +593,7 @@ const generateActivityData = async ({
               questionCount,
               trimmedDescription,
               activityType,
+              existingQuestions,
             ),
           },
         ],

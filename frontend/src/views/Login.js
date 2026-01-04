@@ -17,6 +17,7 @@ import {
   Checkbox,
   Flex,
 } from "@chakra-ui/react";
+import { LuEye, LuEyeClosed } from "react-icons/lu";
 
 import { Form, useNavigate } from "react-router-dom";
 import { login } from "../api/authApi";
@@ -114,8 +115,8 @@ const Login = () => {
                 <InputRightElement>
                   <IconButton
                     variant="ghost"
-                    // icon={showPassword ? <ViewOffIcon /> : <ViewIcon />}
-                    onClick={() => setShowPassword(!showPassword)}
+                    icon={showPassword ? <LuEye /> : <LuEyeClosed />}
+                    onClick={(e) => setShowPassword(!showPassword)}
                   />
                 </InputRightElement>
               </InputGroup>

@@ -30,21 +30,19 @@ const userApi = {
     }
   },
 
-  adminGetUsers: async ({ search = "" } = {}) => {
+  adminGetUsers: async () => {
     try {
-      const response = await axiosInstance.get("users/admin/users", {
-        params: { search },
-      });
+      const response = await axiosInstance.get("users/admin/get-users");
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;
     }
   },
 
-  adminBlockUser: async ({ userId }) => {
+  adminChangeUserStatus: async ({ userId }) => {
     try {
       const response = await axiosInstance.patch(
-        `users/admin/users/${userId}/block`
+        `users/admin/users/change-status/${userId}`
       );
       return response.data;
     } catch (error) {
@@ -71,6 +69,6 @@ export const {
   getMe,
   deleteMe,
   adminGetUsers,
-  adminBlockUser,
+  adminChangeUserStatus,
   adminDeleteUser,
 } = userApi;

@@ -92,12 +92,7 @@ const createActivity = async (req, res) => {
     if (!generationResult || generationResult.status !== "ok") {
       return res.status(400).json({
         status: false,
-        message:
-          generationResult?.error?.message ||
-          "Unable to generate activity from the provided description",
-        data: {
-          error: generationResult?.error || null,
-        },
+        message: "OpenAI response failed!",
       });
     }
 
@@ -123,20 +118,6 @@ const createActivity = async (req, res) => {
         message: "Model returned unknown activity type",
       });
     }
-
-    if (!modelActivityType || !modelItems.length) {
-      return res.status(400).json({
-        status: false,
-        message: "Model returned incomplete activity data",
-      });
-    }
-
-    const badRequest = (message, data) => {
-      const err = new Error(message);
-      err.statusCode = 400;
-      err.data = data;
-      throw err;
-    };
 
     const session = await mongoose.startSession();
     let createdActivity;
@@ -170,28 +151,17 @@ const createActivity = async (req, res) => {
         });
         await createdActivity.save({ session });
 
-        const items = modelItems;
-
-        if (items.length !== parsedQuestionCount) {
-          badRequest(
-            `Model returned ${items.length} items, expected ${parsedQuestionCount}`,
-          );
-        }
-
+        //create question documents
         const questionDocs = [];
-        for (const item of items) {
+        for (const item of modelItems) {
           let questionText = "";
           if (
             modelActivityType === "multiple_choice" ||
             modelActivityType === "text"
           ) {
-            questionText = String(item.question || "").trim();
+            questionText = item.question;
           } else if (modelActivityType === "flashcard") {
-            questionText = String(item.front || "").trim();
-          }
-
-          if (!questionText) {
-            badRequest("Model returned an empty question");
+            questionText = item.front;
           }
 
           questionDocs.push({
@@ -205,60 +175,34 @@ const createActivity = async (req, res) => {
           { session },
         );
 
+        //create answer
         const answerDocs = [];
-        for (let qi = 0; qi < items.length; qi++) {
-          const item = items[qi];
-          const questionId = insertedQuestions[qi]._id;
+        for (
+          let questionIndex = 0;
+          questionIndex < modelItems.length;
+          questionIndex++
+        ) {
+          const item = modelItems[questionIndex];
+          const questionId = insertedQuestions[questionIndex]._id;
 
           if (modelActivityType === "multiple_choice") {
-            const options = Array.isArray(item.answers) ? item.answers : [];
-            const correctIndexes = Array.isArray(item.correctAnswerIndices)
-              ? item.correctAnswerIndices
-              : [];
-
-            if (options.length < 2) {
-              badRequest(
-                "Multiple-choice question must have at least 2 options",
-              );
-            }
-            if (!correctIndexes.length) {
-              badRequest(
-                "Multiple-choice question must specify at least one correct option",
-              );
-            }
-
-            const maxIndex = options.length - 1;
-            const anyOutOfRange = correctIndexes.some(
-              (idx) => !Number.isInteger(idx) || idx < 0 || idx > maxIndex,
-            );
-            if (anyOutOfRange) {
-              badRequest(
-                "Multiple-choice correctAnswerIndices contains out-of-range index",
-              );
-            }
-
-            for (let i = 0; i < options.length; i++) {
-              const optionText = String(options[i] || "").trim();
-              if (!optionText) continue;
+            for (let i = 0; i < item.answers.length; i++) {
               answerDocs.push({
-                answer: optionText,
-                is_correct: correctIndexes.includes(i),
+                answer: item.answers[i],
+                is_correct: item.correctAnswerIndices.includes(i),
                 question_id: questionId,
               });
             }
           } else if (modelActivityType === "flashcard") {
-            const back = String(item.back || "").trim();
             answerDocs.push({
-              answer: back || "(no back provided)",
+              answer: item.back,
               is_correct: true,
               question_id: questionId,
             });
           }
         }
 
-        if (answerDocs.length) {
-          await ActivityAnswer.insertMany(answerDocs, { session });
-        }
+        await ActivityAnswer.insertMany(answerDocs, { session });
       });
     } finally {
       await session.endSession();
@@ -376,12 +320,13 @@ const getActivityById = async (req, res) => {
           .lean()
       : [];
 
-    const answersByQuestionId = answers.reduce((acc, ans) => {
-      const key = String(ans.question_id);
-      if (!acc[key]) acc[key] = [];
-      acc[key].push(ans);
-      return acc;
-    }, {});
+    //group answers by question
+    const answersByQuestionId = {};
+    for (const answer of answers) {
+      const key = String(answer.question_id);
+      if (!answersByQuestionId[key]) answersByQuestionId[key] = [];
+      answersByQuestionId[key].push(answer);
+    }
 
     const questionsWithAnswers = questions.map((q) => ({
       ...q,
@@ -403,12 +348,13 @@ const getActivityById = async (req, res) => {
             .lean()
         : [];
 
-      const answersByAttemptId = attemptAnswers.reduce((acc, ans) => {
-        const key = String(ans.activity_attempt_id);
-        if (!acc[key]) acc[key] = [];
-        acc[key].push(ans);
-        return acc;
-      }, {});
+      //group answers by attempt
+      const answersByAttemptId = {};
+      for (const answer of attemptAnswers) {
+        const key = String(answer.activity_attempt_id);
+        if (!answersByAttemptId[key]) answersByAttemptId[key] = [];
+        answersByAttemptId[key].push(answer);
+      }
 
       attemptsWithAnswers = attempts.map((a) => ({
         ...a,
@@ -465,7 +411,6 @@ const getActivityAttemptsByActivityId = async (req, res) => {
       });
     }
 
-    // Only meaningful for graded activities.
     if (activity.type !== "multiple-choice" && activity.type !== "text") {
       return res.status(200).json({
         status: true,
@@ -487,12 +432,13 @@ const getActivityAttemptsByActivityId = async (req, res) => {
           .lean()
       : [];
 
-    const answersByAttemptId = attemptAnswers.reduce((acc, ans) => {
-      const key = String(ans.activity_attempt_id);
-      if (!acc[key]) acc[key] = [];
-      acc[key].push(ans);
-      return acc;
-    }, {});
+    // Group answers by attempt
+    const answersByAttemptId = {};
+    for (const answer of attemptAnswers) {
+      const key = String(answer.activity_attempt_id);
+      if (!answersByAttemptId[key]) answersByAttemptId[key] = [];
+      answersByAttemptId[key].push(answer);
+    }
 
     const attemptsWithAnswers = attempts.map((a) => ({
       ...a,
@@ -553,19 +499,23 @@ const submitActivityAttempt = async (req, res) => {
     const answers = await ActivityAnswer.find({
       question_id: { $in: questionIds },
     }).lean();
-    const answersByQuestionId = answers.reduce((acc, a) => {
-      const key = String(a.question_id);
-      if (!acc[key]) acc[key] = [];
-      acc[key].push(a);
-      return acc;
-    }, {});
 
-    const byQid = bodyAnswers.reduce((acc, a) => {
-      const qid = String(a?.question_id || "");
-      if (!qid) return acc;
-      acc[qid] = a;
-      return acc;
-    }, {});
+    // group answers by question
+    const answersByQuestionId = {};
+    for (const answer of answers) {
+      const key = String(answer.question_id);
+      if (!answersByQuestionId[key]) answersByQuestionId[key] = [];
+      answersByQuestionId[key].push(answer);
+    }
+
+    // group submitted answers by question
+    const submittedByQuestionId = {};
+    for (const answer of bodyAnswers) {
+      const questionId = String(answer?.question_id || "");
+      if (questionId) {
+        submittedByQuestionId[questionId] = answer;
+      }
+    }
 
     const activityType = activity.type; // 'multiple-choice' | 'text' | 'flashcards'
     if (activityType !== "multiple-choice" && activityType !== "text") {
@@ -574,75 +524,75 @@ const submitActivityAttempt = async (req, res) => {
         .json({ status: false, message: "Unsupported activity type" });
     }
 
+    // grade the attempt
     let perQuestionResults = [];
     if (activityType === "multiple-choice") {
-      perQuestionResults = questions.map((q) => {
-        const qid = String(q._id);
-        const submitted = byQid[qid];
-        const selectedIds = Array.isArray(submitted?.selected_answer_ids)
-          ? submitted.selected_answer_ids.map(String)
-          : [];
+      for (const question of questions) {
+        const questionId = String(question._id);
+        const submitted = submittedByQuestionId[questionId];
+        const selectedIds = submitted?.selected_answer_ids || [];
 
-        const correctIds = (answersByQuestionId[qid] || [])
-          .filter((a) => a.is_correct)
-          .map((a) => String(a._id))
-          .sort();
+        //find correct answers
+        const correctIds = [];
+        for (const answer of answersByQuestionId[questionId] || []) {
+          if (answer.is_correct) {
+            correctIds.push(String(answer._id));
+          }
+        }
+        correctIds.sort();
 
-        const selectedSorted = [...new Set(selectedIds)].sort();
+        const selectedSorted = [...new Set(selectedIds.map(String))].sort();
 
+        // check if answer is correct
         const isCorrect =
           correctIds.length > 0 &&
           selectedSorted.length === correctIds.length &&
           selectedSorted.every((id, i) => id === correctIds[i]);
 
-        return {
-          question_id: qid,
+        perQuestionResults.push({
+          question_id: questionId,
           is_correct: isCorrect,
           selected_answer_ids: selectedSorted,
           text_answer: "",
-        };
-      });
+        });
+      }
     }
 
     if (activityType === "text") {
-      const gradingItems = questions.map((q) => {
-        const qid = String(q._id);
-        const submitted = byQid[qid];
-        return {
-          question_id: qid,
-          question: String(q.question || ""),
-          user_answer: String(submitted?.text_answer || "").trim(),
-        };
-      });
+      // prepare items for grading
+      const gradingItems = [];
+      for (const question of questions) {
+        const questionId = String(question._id);
+        const submitted = submittedByQuestionId[questionId];
+        gradingItems.push({
+          question_id: questionId,
+          question: question.question,
+          user_answer: submitted?.text_answer || "",
+        });
+      }
 
       const graded = await gradeFreeTextAnswers({
         lessonId: activity.lesson_id,
         items: gradingItems,
       });
-      if (graded.status !== "ok") {
-        return res.status(400).json({
-          status: false,
-          message:
-            graded?.error?.message || "Failed to grade free-text answers",
-        });
+
+      // Map graded results by question ID
+      const gradedByQuestionId = {};
+      for (const result of graded.results) {
+        gradedByQuestionId[String(result.question_id)] = result.is_correct;
       }
 
-      const gradedById = graded.results.reduce((acc, r) => {
-        acc[String(r.question_id)] = Boolean(r.is_correct);
-        return acc;
-      }, {});
-
-      perQuestionResults = questions.map((q) => {
-        const qid = String(q._id);
-        const submitted = byQid[qid];
-        const textAnswer = String(submitted?.text_answer || "");
-        return {
-          question_id: qid,
-          is_correct: Boolean(gradedById[qid]),
+      // Build results
+      for (const question of questions) {
+        const questionId = String(question._id);
+        const submitted = submittedByQuestionId[questionId];
+        perQuestionResults.push({
+          question_id: questionId,
+          is_correct: gradedByQuestionId[questionId] || false,
           selected_answer_ids: [],
-          text_answer: textAnswer,
-        };
-      });
+          text_answer: submitted?.text_answer || "",
+        });
+      }
     }
 
     const score = perQuestionResults.reduce(
@@ -709,7 +659,6 @@ const explainActivityAttemptMistakes = async (req, res) => {
         .json({ status: false, message: "Activity not found" });
     }
 
-    // Ownership check via lesson ownership.
     const lesson = await Lesson.findOne({
       _id: activity.lesson_id,
       user_id: userId,
@@ -755,10 +704,12 @@ const explainActivityAttemptMistakes = async (req, res) => {
     const questions = await ActivityQuestion.find({ activity_id: activityId })
       .sort({ createdAt: 1 })
       .lean();
-    const questionsById = questions.reduce((acc, q) => {
-      acc[String(q._id)] = q;
-      return acc;
-    }, {});
+
+    // map questions by id
+    const questionsById = {};
+    for (const question of questions) {
+      questionsById[String(question._id)] = question;
+    }
 
     let answersById = {};
     if (activity.type === "multiple-choice") {
@@ -766,10 +717,11 @@ const explainActivityAttemptMistakes = async (req, res) => {
       const answers = await ActivityAnswer.find({
         question_id: { $in: questionIds },
       }).lean();
-      answersById = answers.reduce((acc, a) => {
-        acc[String(a._id)] = a;
-        return acc;
-      }, {});
+
+      // map answers by id
+      for (const answer of answers) {
+        answersById[String(answer._id)] = answer;
+      }
     }
 
     const itemsForAi = wrongAttemptAnswers.map((wa) => {
@@ -848,6 +800,271 @@ const explainActivityAttemptMistakes = async (req, res) => {
   }
 };
 
+const deleteActivity = async (req, res) => {
+  try {
+    const userId = res.locals.user.id;
+    const { activityId } = req.params;
+
+    const activity = await Activity.findById(activityId).lean();
+    if (!activity) {
+      return res
+        .status(404)
+        .json({ status: false, message: "Activity not found" });
+    }
+
+    //validare the request
+    const lesson = await Lesson.findOne({
+      _id: activity.lesson_id,
+      user_id: userId,
+    }).lean();
+    if (!lesson) {
+      return res.status(404).json({
+        status: false,
+        message: "Lesson not found or does not belong to user",
+      });
+    }
+    //first delete all the answers, then questions, then ActivityAttemptAnswer, then attempts,
+    //delete the message pull it out of the lesson and
+    //only then delete the acticity
+    const session = await mongoose.startSession();
+    try {
+      await session.withTransaction(async () => {
+        const questions = await ActivityQuestion.find({
+          activity_id: activityId,
+        }).session(session);
+        const questionIds = questions.map((q) => q._id);
+
+        if (questionIds.length) {
+          await ActivityAnswer.deleteMany(
+            { question_id: { $in: questionIds } },
+            { session },
+          );
+        }
+
+        await ActivityQuestion.deleteMany(
+          { activity_id: activityId },
+          { session },
+        );
+
+        const attempts = await ActivityAttempt.find({
+          activity_id: activityId,
+        }).session(session);
+        const attemptIds = attempts.map((a) => a._id);
+
+        if (attemptIds.length) {
+          await ActivityAttemptAnswer.deleteMany(
+            { activity_attempt_id: { $in: attemptIds } },
+            { session },
+          );
+        }
+
+        await ActivityAttempt.deleteMany(
+          { activity_id: activityId },
+          { session },
+        );
+
+        if (activity.message_id) {
+          await Message.findByIdAndDelete(activity.message_id, { session });
+
+          await Lesson.findByIdAndUpdate(
+            activity.lesson_id,
+            { $pull: { messages: activity.message_id } },
+            { session },
+          );
+        }
+
+        await Activity.findByIdAndDelete(activityId, { session });
+      });
+    } finally {
+      await session.endSession();
+    }
+
+    return res.status(200).json({
+      status: true,
+      message: "Activity deleted successfully",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: false,
+      message: "Failed to delete activity",
+      error: error.message,
+    });
+  }
+};
+
+const regenerateActivity = async (req, res) => {
+  try {
+    const userId = res.locals.user.id;
+    const { activityId } = req.params;
+
+    //validate the request
+    const activity = await Activity.findById(activityId).lean();
+    if (!activity) {
+      return res.status(404).json({
+        status: false,
+        message: "Activity not found",
+      });
+    }
+
+    const lesson = await Lesson.findOne({
+      _id: activity.lesson_id,
+      user_id: userId,
+    }).lean();
+    if (!lesson) {
+      return res.status(404).json({
+        status: false,
+        message: "Lesson not found or does not belong to user",
+      });
+    }
+
+    //get acitivyt question and get the text from them
+    const existingQuestions = await ActivityQuestion.find({
+      activity_id: activityId,
+    })
+      .sort({ createdAt: 1 })
+      .lean();
+
+    const existingQuestionTexts = existingQuestions.map((q) => q.question);
+
+    // get activity description
+    const activityMessage = await Message.findById(activity.message_id).lean();
+    const description = activityMessage.content;
+
+    // map activity type
+    const modelRequestedType = mapRequestTypeToModel(activity.type);
+    if (!modelRequestedType) {
+      return res.status(400).json({
+        status: false,
+        message: "Unsupported activity type",
+      });
+    }
+
+    // generate new activity with old question attached
+    const generationResult = await generateActivityData({
+      lessonId: activity.lesson_id,
+      userId,
+      activityType: modelRequestedType,
+      questionCount: activity.question_count,
+      title: activity.title,
+      description,
+      existingQuestions: existingQuestionTexts,
+    });
+
+    if (!generationResult || generationResult.status !== "ok") {
+      return res.status(400).json({
+        status: false,
+        message: "OpenAI response failed!",
+      });
+    }
+
+    const modelActivityType = generationResult.activityType;
+
+    if (!generationResult.items.length) {
+      return res.status(400).json({
+        status: false,
+        message: "OpenAI response failed!",
+      });
+    }
+
+    const session = await mongoose.startSession();
+
+    try {
+      await session.withTransaction(async () => {
+        //delete all attempt data
+        const attemptIds = (
+          await ActivityAttempt.find({ activity_id: activityId })
+            .select("_id")
+            .lean()
+        ).map((a) => a._id);
+
+        if (attemptIds.length) {
+          await ActivityAttemptAnswer.deleteMany(
+            { activity_attempt_id: { $in: attemptIds } },
+            { session },
+          );
+          await ActivityAttempt.deleteMany(
+            { activity_id: activityId },
+            { session },
+          );
+        }
+
+        //delete old answers
+        await ActivityAnswer.deleteMany(
+          { question_id: { $in: existingQuestions.map((q) => q._id) } },
+          { session },
+        );
+
+        // Update existing questions or create new ones if needed
+        const questionUpdates = [];
+
+        for (let i = 0; i < generationResult.items.length; i++) {
+          const item = generationResult.items[i];
+          let questionText = "";
+
+          if (
+            modelActivityType === "multiple_choice" ||
+            modelActivityType === "text"
+          ) {
+            questionText = String(item.question || "").trim();
+          } else if (modelActivityType === "flashcard") {
+            questionText = String(item.front || "").trim();
+          }
+          //update question text
+          questionUpdates.push({
+            updateOne: {
+              filter: { _id: existingQuestions[i]._id },
+              update: { $set: { question: questionText } },
+            },
+          });
+        }
+        if (questionUpdates.length) {
+          await ActivityQuestion.bulkWrite(questionUpdates, { session });
+        }
+
+        // create new answers
+        const answerDocs = [];
+        for (let index = 0; index < generationResult.items.length; index++) {
+          const item = generationResult.items[index];
+          const questionId = existingQuestions[index]._id;
+          if (modelActivityType === "multiple_choice") {
+            // create each new answer option linked to the question
+            for (let i = 0; i < item.answers.length; i++) {
+              answerDocs.push({
+                answer: item.answers[i],
+                is_correct: item.correctAnswerIndices.includes(i),
+                question_id: questionId,
+              });
+            }
+          } else if (modelActivityType === "flashcard") {
+            // create back side linked to the front side
+
+            answerDocs.push({
+              answer: item.back,
+              is_correct: true,
+              question_id: questionId,
+            });
+          }
+        }
+
+        await ActivityAnswer.insertMany(answerDocs, { session });
+      });
+    } finally {
+      await session.endSession();
+    }
+
+    return res.status(200).json({
+      status: true,
+      message: "Activity regenerated successfully!",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: false,
+      message: "Failed to regenerate activity",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   createActivity,
   getActivitiesByLessonId,
@@ -855,4 +1072,6 @@ module.exports = {
   getActivityAttemptsByActivityId,
   submitActivityAttempt,
   explainActivityAttemptMistakes,
+  deleteActivity,
+  regenerateActivity,
 };

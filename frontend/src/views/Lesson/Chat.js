@@ -609,6 +609,9 @@ const Chat = () => {
           onActivityModalClose();
         }}
         activityId={selectedActivityId}
+        onActivityDeleted={() => {
+          getAllMessagesFunc();
+        }}
       />
     </Box>
   );

@@ -8,6 +8,8 @@ const {
   getActivityById,
   submitActivityAttempt,
   explainActivityAttemptMistakes,
+  deleteActivity,
+  regenerateActivity,
 } = require("../../controllers/activities/activity");
 
 router.post("/create-activity", protect, createActivity);
@@ -19,5 +21,7 @@ router.post(
   protect,
   explainActivityAttemptMistakes,
 );
+router.put("/regenerate/:activityId", protect, regenerateActivity);
+router.delete("/delete/:activityId", protect, deleteActivity);
 
 module.exports = router;

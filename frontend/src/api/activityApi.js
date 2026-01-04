@@ -66,6 +66,30 @@ const activityApi = {
       throw error.response?.data || error.message;
     }
   },
+
+  deleteActivity: async (activityId) => {
+    try {
+      const response = await axiosInstance.delete(
+        `activities/delete/${activityId}`
+      );
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  regenerateActivity: async (activityId) => {
+    try {
+      const response = await axiosInstance.put(
+        `activities/regenerate/${activityId}`,
+        {},
+        { timeout: 60000 }
+      );
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
 };
 
 export default activityApi;
@@ -75,4 +99,6 @@ export const {
   getActivityById,
   submitAttempt,
   explainMistakes,
+  deleteActivity,
+  regenerateActivity,
 } = activityApi;

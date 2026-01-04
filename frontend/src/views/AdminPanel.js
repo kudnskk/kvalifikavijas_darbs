@@ -24,6 +24,7 @@ import {
   AlertDialogBody,
   AlertDialogFooter,
   useDisclosure,
+  Spinner,
 } from "@chakra-ui/react";
 import { useNavigate } from "react-router-dom";
 import { userApi } from "../api";
@@ -31,17 +32,17 @@ import { userApi } from "../api";
 const AdminPanel = () => {
   const toast = useToast();
   const navigate = useNavigate();
-  const [me, setMe] = useState(null);
+  const [allUsers, setAllUsers] = useState([]);
   const [users, setUsers] = useState([]);
   const [search, setSearch] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const [selectedUser, setSelectedUser] = useState(null);
-  const [isDeleting, setIsDeleting] = useState(false);
+
   const cancelRef = useRef();
   const { isOpen, onOpen, onClose } = useDisclosure();
 
-  const loadMeAndUsers = async (searchValue = "") => {
+  const loadUsers = async () => {
     setIsLoading(true);
     try {
       const meRes = await userApi.getMe();
@@ -58,8 +59,6 @@ const AdminPanel = () => {
       }
 
       const currentUser = meRes?.data?.user || null;
-      setMe(currentUser);
-
       if (currentUser?.user_type !== "admin") {
         toast({
           title: "Access denied",
@@ -72,20 +71,17 @@ const AdminPanel = () => {
         return;
       }
 
-      const usersRes = await userApi.adminGetUsers({ search: searchValue });
+      const usersRes = await userApi.adminGetUsers();
       if (usersRes?.status) {
-        setUsers(usersRes?.data?.users || []);
+        const fetchedUsers = usersRes?.data?.users || [];
+        setAllUsers(fetchedUsers);
+        setUsers(fetchedUsers);
       } else {
+        setAllUsers([]);
         setUsers([]);
-        toast({
-          title: "No users",
-          description: usersRes?.message || "No user found!",
-          status: "info",
-          duration: 2500,
-          isClosable: true,
-        });
       }
     } catch (error) {
+      setAllUsers([]);
       setUsers([]);
       toast({
         title: "Failed fetching data",
@@ -101,27 +97,37 @@ const AdminPanel = () => {
   };
 
   useEffect(() => {
-    loadMeAndUsers("");
+    loadUsers();
   }, []);
 
-  const handleSearch = async () => {
-    await loadMeAndUsers(search.trim());
+  const handleSearch = () => {
+    const searchTerm = search.trim().toLowerCase();
+    if (!searchTerm) {
+      setUsers(allUsers);
+      return;
+    }
+
+    const filtered = allUsers.filter(
+      (user) =>
+        user.user_name?.toLowerCase().includes(searchTerm) ||
+        user.email?.toLowerCase().includes(searchTerm)
+    );
+    setUsers(filtered);
   };
 
-  const handleBlock = async (userId) => {
+  const handleToggleBlockStatus = async (userId) => {
     try {
-      const res = await userApi.adminBlockUser({ userId });
+      setIsLoading(true);
+      const res = await userApi.adminChangeUserStatus({ userId });
       if (res?.status) {
         toast({
           title: "Success",
-          description:
-            res?.message ||
-            "User blocked successfully! (Lietotājs nobloķēts veiksmīgi!)",
+          description: res?.message || "User status changed successfully!",
           status: "success",
           duration: 2000,
           isClosable: true,
         });
-        await loadMeAndUsers(search.trim());
+        await loadUsers();
       } else {
         toast({
           title: "Failed",
@@ -139,6 +145,8 @@ const AdminPanel = () => {
         duration: 3000,
         isClosable: true,
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -153,20 +161,18 @@ const AdminPanel = () => {
       return;
     }
 
-    setIsDeleting(true);
+    setIsLoading(true);
     try {
       const res = await userApi.adminDeleteUser({ userId: selectedUser.id });
       if (res?.status) {
         toast({
           title: "Success",
-          description:
-            res?.message ||
-            "User deleted successfully! (Lietotājs izdzēsts veiksmīgi!)",
+          description: res?.message || "User deleted successfully!",
           status: "success",
           duration: 2000,
           isClosable: true,
         });
-        await loadMeAndUsers(search.trim());
+        await loadUsers();
       } else {
         toast({
           title: "Delete failed",
@@ -185,14 +191,30 @@ const AdminPanel = () => {
         isClosable: true,
       });
     } finally {
-      setIsDeleting(false);
+      setIsLoading(false);
       onClose();
       setSelectedUser(null);
     }
   };
 
   return (
-    <Box color="white">
+    <Box color="white" position="relative">
+      {isLoading && (
+        <Box
+          position="fixed"
+          top={0}
+          left={0}
+          right={0}
+          bottom={0}
+          bg="rgba(0, 0, 0, 0.7)"
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+          zIndex={9999}
+        >
+          <Spinner />
+        </Box>
+      )}
       <Container maxW="container.md" py={8}>
         <Box mb={6}>
           <Heading size="lg">Admin panel</Heading>
@@ -209,12 +231,9 @@ const AdminPanel = () => {
                   placeholder="Search by username or email"
                   bg="#1E293B"
                   borderColor="#334155"
+                  color="white"
                 />
-                <Button
-                  colorScheme="blue"
-                  onClick={handleSearch}
-                  isLoading={isLoading}
-                >
+                <Button colorScheme="blue" onClick={handleSearch}>
                   Search
                 </Button>
               </HStack>
@@ -252,11 +271,10 @@ const AdminPanel = () => {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                colorScheme="red"
-                                onClick={() => handleBlock(u.id)}
-                                isDisabled={u.is_blocked}
+                                colorScheme={u.is_blocked ? "blue" : "red"}
+                                onClick={() => handleToggleBlockStatus(u.id)}
                               >
-                                Block
+                                {u.is_blocked ? "Unblock" : "Block"}
                               </Button>
                               <Button
                                 size="sm"
@@ -293,24 +311,18 @@ const AdminPanel = () => {
         <AlertDialogOverlay>
           <AlertDialogContent bg="#0B1220" color="white" borderColor="#334155">
             <AlertDialogHeader fontSize="lg" fontWeight="bold">
-              Confirm deletion
+              Confirm Delete User
             </AlertDialogHeader>
 
             <AlertDialogBody>
-              Are you sure you want to permanently delete this account? (Vai jūs
-              tiešām gribāt neatgriezeniski izdzēst šo kontu?)
+              Are you sure you want to permanently delete this account?
             </AlertDialogBody>
 
             <AlertDialogFooter>
               <Button ref={cancelRef} onClick={onClose} variant="outline">
                 Cancel
               </Button>
-              <Button
-                colorScheme="red"
-                onClick={handleConfirmDelete}
-                ml={3}
-                isLoading={isDeleting}
-              >
+              <Button colorScheme="red" onClick={handleConfirmDelete} ml={3}>
                 Delete
               </Button>
             </AlertDialogFooter>
