@@ -52,15 +52,15 @@ const withTimeout = async (promise, ms, label) => {
     clearTimeout(timeoutId);
   }
 };
-
+//function to format message for the model input
 const formatMessageForModel = (msg) => {
-  const baseText = typeof msg.content === "string" ? msg.content : "";
   const hasFile = Boolean(msg.file && msg.file.content);
 
   if (!hasFile) {
+    //no file content attached
     return {
       role: msg.sender_type,
-      content: baseText,
+      content: msg.content,
     };
   }
 
@@ -68,10 +68,11 @@ const formatMessageForModel = (msg) => {
   const fileText = msg.file.content || "";
   return {
     role: msg.sender_type,
-    content: `${baseText}\n\n[Attached file: ${fileName}]\n${fileText}`.trim(),
-  };
+    content:
+      `${msg.content}\n\n[Attached file: ${fileName}]\n${fileText}`.trim(),
+  }; // if file is included, append its content
 };
-
+//instructions for activity generation
 const getInstructionsForGeneratingActivity = (
   lessonTitle,
   questionCount,
@@ -123,7 +124,8 @@ const getInstructionsForGeneratingActivity = (
   return `Generate activity items for the lesson.
 You MUST return JSON strictly matching the provided schema.${regenerationNote}`;
 };
-
+//schemas for activity generation
+//multiple choice: question, answers array, correctAnswerIndices array
 const multipleChoiceGenerationSchema = {
   type: "object",
   additionalProperties: false,
@@ -147,7 +149,7 @@ const multipleChoiceGenerationSchema = {
   },
   required: ["items"],
 };
-
+//text: question, referenceAnswer
 const textGenerationSchema = {
   type: "object",
   additionalProperties: false,
@@ -167,7 +169,7 @@ const textGenerationSchema = {
   },
   required: ["items"],
 };
-
+//flashcard: front, back
 const flashcardGenerationSchema = {
   type: "object",
   additionalProperties: false,
@@ -549,27 +551,22 @@ const generateActivityData = async ({
   description,
   existingQuestions = null,
 }) => {
+  //get lesson data
   const lesson = await Lesson.findById(lessonId).lean();
-
-  const fail = (message) => ({
-    status: "error",
-    error: { message, clarification_questions: [] },
-    activityType: null,
-    items: null,
-  });
-
-  if (!lesson) return fail("Lesson not found");
-
+  //get previous messages made in this lesson for the context
   const previousMessages = await Message.find({ lesson_id: lessonId })
     .sort({ createdAt: -1 })
     .limit(20)
     .lean();
   previousMessages.reverse();
-
+  //format the messages: separate them into user and assistant messages for the request input
   const historyAsInput = previousMessages.map(formatMessageForModel);
 
-  const trimmedDescription = String(description || "").trim();
-
+  const trimmedDescription = String(description).trim();
+  //get correct schema for the activity type
+  //for multiple choice get the one quesiton, multiple answers schema
+  //for text get question schema
+  //for flashcard get front and back schema
   const schemaByType = {
     multiple_choice: multipleChoiceGenerationSchema,
     text: textGenerationSchema,
@@ -577,8 +574,10 @@ const generateActivityData = async ({
   };
 
   const schema = schemaByType[String(activityType || "")];
-  if (!schema) return fail(`Unsupported activityType: ${String(activityType)}`);
 
+  //make a promise request with correct context from the messages
+  //generated instruction based on the activity type
+  //correct schema for the activity type
   let response;
   try {
     response = await withTimeout(
@@ -613,27 +612,32 @@ const generateActivityData = async ({
     );
   } catch (error) {
     console.error("Activity generation failed:", error?.message || error);
-    return fail(
-      error?.code === "ETIMEDOUT"
-        ? "Activity generation took too long. Please try again."
-        : "Failed to generate activity",
-    );
+    return {
+      status: "error",
+      error: error.message || "Failed to generate activity data",
+    };
   }
-
+  //get raw response
   const raw = response.output_text;
+  //validate response
   if (response.status !== "completed")
     throw new Error("OpenAI response failed!");
   try {
     const out = JSON.parse(raw);
     const items = Array.isArray(out?.items) ? out.items : null;
-    if (!items) return fail("Model returned invalid activity items");
+    //make sure questions were generated and their number is correct
+    if (!items)
+      return {
+        status: "error",
+        error: "OpenAI response failed!",
+      };
     if (items.length !== Number(questionCount)) {
-      return fail(
-        `Model returned ${items.length} items, expected ${Number(
-          questionCount,
-        )}`,
-      );
+      return {
+        status: "error",
+        error: "OpenAI response failed!",
+      };
     }
+    //return the generated questions
     return {
       status: "ok",
       error: null,
@@ -641,7 +645,10 @@ const generateActivityData = async ({
       items,
     };
   } catch (e) {
-    return fail("Failed to parse model output as JSON");
+    return {
+      status: "error",
+      error: "Failed validate the response",
+    };
   }
 };
 
