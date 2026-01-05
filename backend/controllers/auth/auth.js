@@ -98,23 +98,23 @@ exports.register = async (req, res) => {
     const emailVerifyToken = Math.floor(1000 + Math.random() * 9000);
     newUser.is_email_verified = false;
     newUser.email_verify_token = emailVerifyToken;
-    const msg = {
-      to: newUser.email,
-      subject: "Verify your Email",
-      html: `
-      <p>Please verify your email by using this 4-digit code in the email verification form:</p>
-      <p>${emailVerifyToken}</p>
-    `,
-      text: `Code: ${emailVerifyToken}`,
-    };
-    const result = await sendEmail(msg);
+    // const msg = {
+    //   to: newUser.email,
+    //   subject: "Verify your Email",
+    //   html: `
+    //   <p>Please verify your email by using this 4-digit code in the email verification form:</p>
+    //   <p>${emailVerifyToken}</p>
+    // `,
+    //   text: `Code: ${emailVerifyToken}`,
+    // };
+    // const result = await sendEmail(msg);
 
-    if (!result.accepted || result.accepted.length === 0) {
-      return res.status(500).json({
-        status: false,
-        message: "Error while sending email!",
-      });
-    }
+    // if (!result.accepted || result.accepted.length === 0) {
+    //   return res.status(500).json({
+    //     status: false,
+    //     message: "Error while sending email!",
+    //   });
+    // }
     await newUser.save(); //save only after email is sent successfully
     const token = await signToken(newUser._id, false); //token to be authed on the spot after registrations
 
@@ -209,19 +209,19 @@ exports.forgotPasswordRequest = async (req, res) => {
     const resetToken = Math.floor(1000 + Math.random() * 9000);
     user.password_reset_token = resetToken;
     user.password_reset_expires = Date.now() + 1000 * 60 * 15; // 15 min
-    const result = await sendEmail({
-      to: user.email,
-      subject: "Password Reset Code",
-      html: `<p>Your password reset code is: <b>${resetToken}</b></p>`,
-      text: `Your password reset code is: ${resetToken}`,
-    });
+    // const result = await sendEmail({
+    //   to: user.email,
+    //   subject: "Password Reset Code",
+    //   html: `<p>Your password reset code is: <b>${resetToken}</b></p>`,
+    //   text: `Your password reset code is: ${resetToken}`,
+    // });
 
-    if (!result.accepted || result.accepted.length === 0) {
-      return res.status(500).json({
-        status: false,
-        message: "Error while sending email!",
-      });
-    }
+    // if (!result.accepted || result.accepted.length === 0) {
+    //   return res.status(500).json({
+    //     status: false,
+    //     message: "Error while sending email!",
+    //   });
+    // }
     await user.save();
 
     return res
