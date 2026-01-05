@@ -2,8 +2,8 @@ const nodemailer = require("nodemailer");
 
 const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
-  port: 465,
-  secure: true,
+  port: 587,
+  secure: false,
   auth: {
     user: process.env.GMAIL_EMAIL,
     pass: process.env.GMAIL_PASSWORD,
@@ -13,7 +13,7 @@ const transporter = nodemailer.createTransport({
 async function sendEmail({ to, subject, html, text }) {
   try {
     const info = await transporter.sendMail({
-      from: `"AI Learning Assistant" <${process.env.GMAIL_USER}>`,
+      from: `"AI Learning Assistant" <${process.env.GMAIL_EMAIL}>`,
       to,
       subject,
       text,
