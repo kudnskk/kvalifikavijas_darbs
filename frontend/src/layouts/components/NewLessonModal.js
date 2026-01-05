@@ -161,13 +161,18 @@ const NewLessonModal = ({
                   borderColor: "#3B82F6",
                   boxShadow: "0 0 0 1px #3B82F6",
                 }}
+                sx={{
+                  "& option": {
+                    backgroundColor: "#0F172A",
+                    color: "white",
+                  },
+                  "& option:hover": {
+                    backgroundColor: "#1E293B",
+                  },
+                }}
               >
                 {categories?.map((category) => (
-                  <option
-                    key={category._id}
-                    value={category._id}
-                    style={{ background: "#0F172A", color: "white" }}
-                  >
+                  <option key={category._id} value={category._id}>
                     {category.title}
                   </option>
                 ))}

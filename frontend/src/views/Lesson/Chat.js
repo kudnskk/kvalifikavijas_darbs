@@ -508,14 +508,14 @@ const Chat = () => {
 
               <Box ref={messagesEndRef} height="1px" />
             </Box>
-            <Flex justify="space-between" w="100%" mb={2}>
+            <Flex justify="space-between" w="100%" mb={2} ml={2}>
               {isWaitingForResponse && (
                 <Text fontSize="sm" color="gray.400" alignSelf="center">
                   Waiting for response...
                 </Text>
               )}
             </Flex>
-            <Flex align={"center"}>
+            <Flex align={"center"} ml={2}>
               <ChatFileDropzone
                 onFilesSelected={(files) => {
                   setAttachedFiles(files);

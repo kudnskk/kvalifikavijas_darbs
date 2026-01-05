@@ -1,5 +1,5 @@
 const mammoth = require("mammoth");
-const pdfParse = require("pdf-parse");
+const { PDFParse } = require("pdf-parse");
 
 const normalizeText = (text) => {
   if (typeof text !== "string") return "";
@@ -30,8 +30,10 @@ const extractFileText = async (file) => {
   }
 
   if (mimetype === "application/pdf") {
-    const pdf = await pdfParse(buffer);
-    return capText(normalizeText(pdf?.text || ""));
+    const uint8Array = new Uint8Array(buffer);
+    const parser = new PDFParse({ data: uint8Array });
+    const result = await parser.getText();
+    return capText(normalizeText(result?.text || ""));
   }
 
   if (
@@ -43,13 +45,13 @@ const extractFileText = async (file) => {
   }
 
   if (mimetype === "application/msword") {
-    // .doc parsing usually requires external tooling; keep it explicit.
+    // doc file parsing not possible
     throw new Error(
       "DOC files are not supported for text extraction. Please convert to DOCX.",
     );
   }
 
-  throw new Error("Unsupported file type");
+  throw new Error("Unable to read this file, please choose another one");
 };
 
 module.exports = {
