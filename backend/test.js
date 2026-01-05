@@ -30,7 +30,7 @@ const multipleChoiseGenerationSchema = {
 
 async function generateActivityData({
   lessonTitle,
-  activityType, // multiple_choice | free_text | flashcard
+  activityType, // multiple-choice | text | flashcards
   questionCount,
   title,
   description,
@@ -78,21 +78,21 @@ async function main() {
   const lessonTitle = "Introduction to Photosynthesis";
   const tests = [
     {
-      activityType: "multiple_choice",
+      activityType: "multiple-choice",
       questionCount: 5,
       title: "Photosynthesis Quiz",
       description:
         "Make beginner-friendly questions focusing on key terms and process steps.",
     },
     // {
-    //   activityType: "free_text",
+    //   activityType: "text",
     //   questionCount: 3,
     //   title: "Explain Photosynthesis",
     //   description:
     //     "Generate open questions that require short written answers, include reference answers and key points.",
     // },
     // {
-    //   activityType: "flashcard",
+    //   activityType: "flashcards",
     //   questionCount: 5,
     //   title: "Photosynthesis Flashcards",
     //   description: "Front should be a term, back should be a short definition.",

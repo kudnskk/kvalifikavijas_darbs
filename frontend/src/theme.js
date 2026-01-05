@@ -5,6 +5,13 @@ const theme = extendTheme({
     heading: "'Poppins', sans-serif",
     body: "'Poppins', sans-serif",
   },
+  styles: {
+    global: {
+      "input[type=password]::-ms-reveal, input[type=password]::-ms-clear": {
+        display: "none",
+      },
+    },
+  },
 });
 
 export default theme;

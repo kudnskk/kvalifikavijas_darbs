@@ -147,11 +147,11 @@ const NewCategoryModal = ({
         setLessonsToAdd([]);
         setLessonsToRemove([]);
 
-        if (onCategoryCreated) {
-          onCategoryCreated();
-        }
-
         onClose();
+
+        if (onCategoryCreated) {
+          await onCategoryCreated();
+        }
       } else {
         toast({
           title: "Error",

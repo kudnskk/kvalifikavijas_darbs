@@ -33,10 +33,12 @@ import NewCategoryModal from "../layouts/components/NewCategoryModal";
 import NewLessonModal from "../layouts/components/NewLessonModal";
 import { categoryApi } from "../api";
 import { userApi } from "../api";
+import { useLayoutRefresh } from "../layouts/MainLayout";
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const toast = useToast();
+  const { refreshLayout } = useLayoutRefresh();
   const [categories, setCategories] = useState([]);
   const [lessons, setLessons] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -105,6 +107,13 @@ const Dashboard = () => {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleDataRefresh = async () => {
+    await getDataForDisplay();
+    if (refreshLayout) {
+      await refreshLayout();
     }
   };
 
@@ -226,12 +235,12 @@ const Dashboard = () => {
       <NewCategoryModal
         isOpen={isNewCategoryModalOpen}
         onClose={onNewCategoryModalClose}
-        onCategoryCreated={getDataForDisplay}
+        onCategoryCreated={handleDataRefresh}
       />
       <NewLessonModal
         isOpen={isNewLessonModalOpen}
         onClose={onNewLessonModalClose}
-        onLessonCreated={getDataForDisplay}
+        onLessonCreated={handleDataRefresh}
         categories={categories}
       />
     </Box>

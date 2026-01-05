@@ -117,8 +117,6 @@ export const ActivityModal = ({
   const currentQuestion = questionCount ? questions[clampedIndex] : null;
 
   const submissionDraft = useMemo(() => {
-    // This is intentionally not sent anywhere yet.
-    // It collects all user responses in a shape ready for a backend "check" endpoint.
     const answerPayload = questions.map((q) => {
       const qid = String(q._id);
       if (isMultipleChoice) {
@@ -208,6 +206,13 @@ export const ActivityModal = ({
     setAttemptResult(null);
     setIsSubmitting(false);
     onClose();
+    setIsDeleting(false);
+    setIsRegenerating(false);
+    setMistakeExplanations(null);
+    setMistakesAttemptId(null);
+    setIsExplaining(false);
+    setIsHistoryLoading(false);
+    setIsLoading(false);
   };
 
   const handleStart = () => {
@@ -274,38 +279,18 @@ export const ActivityModal = ({
     setMistakeExplanations(null);
     setMistakesAttemptId(String(attemptId));
     try {
-      console.log("Calling explainMistakes API with:", {
-        activityId,
-        attemptId,
-      });
       const response = await activityApi.explainMistakes(activityId, attemptId);
-      console.log("API response received:", response);
 
       if (!response?.status) {
-        console.error("Response status is falsy:", response);
         throw new Error(response?.message || "Failed to explain mistakes");
       }
 
-      console.log("Response data:", response?.data);
       const explanations = Array.isArray(response?.data?.explanations)
         ? response.data.explanations
         : [];
 
-      console.log("Extracted explanations:", explanations);
-
-      if (!explanations.length) {
-        throw new Error("No explanations returned");
-      }
-
       setMistakeExplanations(explanations);
-      console.log("Mistake explanations set successfully");
     } catch (err) {
-      console.error("Error in handleExplainMistakes:", err);
-      console.error("Error details:", {
-        message: err?.message,
-        response: err?.response,
-        data: err?.response?.data,
-      });
       toast({
         title: "Error",
         description:
@@ -341,6 +326,44 @@ export const ActivityModal = ({
     if (!activityId || !activityType) return;
     if (isFlashcards) return;
     if (attemptResult || isSubmitting) return;
+
+    //if multiple-choice, at least one answer per question
+    if (isMultipleChoice) {
+      const unansweredQuestions = questions.filter((q) => {
+        const selectedAnswers =
+          multipleChoiceAnswersByQuestionId[String(q._id)] || [];
+        return selectedAnswers.length === 0;
+      });
+
+      if (unansweredQuestions.length > 0) {
+        toast({
+          title: "Incomplete submission",
+          description: "All questions in this activity must be turned in!",
+          status: "error",
+          duration: 4000,
+          isClosable: true,
+        });
+        return;
+      }
+    }
+    // for free text should have string length > 0 for each question
+    if (isFreeText) {
+      const unansweredQuestions = questions.filter((q) => {
+        const textAnswer = freeTextAnswersByQuestionId[String(q._id)] || "";
+        return !textAnswer.trim();
+      });
+
+      if (unansweredQuestions.length > 0) {
+        toast({
+          title: "Incomplete submission",
+          description: "All questions in this activity must be turned in!",
+          status: "error",
+          duration: 4000,
+          isClosable: true,
+        });
+        return;
+      }
+    }
 
     setIsSubmitting(true);
     try {
@@ -465,6 +488,26 @@ export const ActivityModal = ({
 
   return (
     <>
+      {(isLoading ||
+        isHistoryLoading ||
+        isRegenerating ||
+        isSubmitting ||
+        isExplaining) && (
+        <Box
+          position="fixed"
+          top={0}
+          left={0}
+          right={0}
+          bottom={0}
+          bg="rgba(0, 0, 0, 0.7)"
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+          zIndex={9999}
+        >
+          <Spinner />
+        </Box>
+      )}
       <Modal
         isOpen={isOpen}
         onClose={handleClose}
@@ -538,11 +581,7 @@ export const ActivityModal = ({
           </ModalHeader>
 
           <ModalBody overflowY="auto" flex="1">
-            {isLoading ? (
-              <Flex align="center" justify="center" py={10}>
-                <Spinner color="#3B82F6" thickness="3px" />
-              </Flex>
-            ) : !activity ? (
+            {!activity ? (
               <Text color="gray.400">No activity loaded.</Text>
             ) : isShowingMistakes && (isMultipleChoice || isFreeText) ? (
               <VStack align="stretch" spacing={4}>
@@ -551,12 +590,7 @@ export const ActivityModal = ({
                     Mistakes explanation
                   </Text>
 
-                  {isExplaining ? (
-                    <Flex align="center" justify="center" py={6}>
-                      <Spinner color="#3B82F6" thickness="3px" />
-                    </Flex>
-                  ) : !mistakeExplanations ||
-                    mistakeExplanations.length === 0 ? (
+                  {!mistakeExplanations || mistakeExplanations.length === 0 ? (
                     <Text color="gray.400" fontSize="sm">
                       No mistakes to explain.
                     </Text>
@@ -834,11 +868,7 @@ export const ActivityModal = ({
 
                   {(isMultipleChoice || isFreeText) && (
                     <Box>
-                      {isHistoryLoading ? (
-                        <Flex align="center" justify="center" py={4}>
-                          <Spinner color="#3B82F6" thickness="3px" />
-                        </Flex>
-                      ) : attemptHistory.length === 0 ? (
+                      {attemptHistory.length === 0 ? (
                         <Text color="gray.400" fontSize="sm">
                           No attempts yet.
                         </Text>

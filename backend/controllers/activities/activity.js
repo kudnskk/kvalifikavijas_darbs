@@ -12,20 +12,6 @@ const {
   explainActivityMistakes,
 } = require("../../utils/assistantInstructions");
 
-const mapRequestTypeToModel = (type) => {
-  if (type === "multiple-choice") return "multiple_choice";
-  if (type === "text") return "text";
-  if (type === "flashcards") return "flashcard";
-  return null;
-};
-
-const mapActivityTypeToDb = (modelActivityType) => {
-  if (modelActivityType === "multiple_choice") return "multiple-choice";
-  if (modelActivityType === "text") return "text";
-  if (modelActivityType === "flashcard") return "flashcards";
-  return null;
-};
-
 const createActivity = async (req, res) => {
   try {
     const io = req.io;
@@ -72,18 +58,11 @@ const createActivity = async (req, res) => {
     }
 
     const parsedQuestionCount = Number(question_count);
-    const modelRequestedType = mapRequestTypeToModel(type);
-    if (!modelRequestedType) {
-      return res.status(400).json({
-        status: false,
-        message: "Unsupported activity type",
-      });
-    }
 
     const generationResult = await generateActivityData({
       lessonId: lesson_id,
       userId,
-      activityType: modelRequestedType,
+      activityType: type,
       questionCount: question_count,
       title,
       description,
@@ -96,7 +75,7 @@ const createActivity = async (req, res) => {
       });
     }
 
-    const modelActivityType = generationResult.activityType;
+    const activityType = generationResult.activityType;
     const modelItems = Array.isArray(generationResult.items)
       ? generationResult.items
       : [];
@@ -106,18 +85,9 @@ const createActivity = async (req, res) => {
 
     const activityTitle =
       trimmedTitle ||
-      `${String(modelActivityType || type || "activity").replaceAll("_", " ")}`;
+      `${String(activityType || type || "activity").replaceAll("-", " ")}`;
 
     const activityChatDescription = trimmedDescription || activityTitle;
-
-    const dbActivityType = mapActivityTypeToDb(modelActivityType);
-
-    if (!dbActivityType) {
-      return res.status(400).json({
-        status: false,
-        message: "Model returned unknown activity type",
-      });
-    }
 
     const session = await mongoose.startSession();
     let createdActivity;
@@ -143,24 +113,20 @@ const createActivity = async (req, res) => {
         createdActivity = new Activity({
           lesson_id,
           title: activityTitle,
-          type: dbActivityType,
+          type: activityType,
           question_count: parsedQuestionCount,
           max_score:
-            dbActivityType === "flashcards" ? undefined : parsedQuestionCount,
+            activityType === "flashcards" ? undefined : parsedQuestionCount,
           message_id: createdMessage._id,
         });
         await createdActivity.save({ session });
 
-        //create question documents
         const questionDocs = [];
         for (const item of modelItems) {
           let questionText = "";
-          if (
-            modelActivityType === "multiple_choice" ||
-            modelActivityType === "text"
-          ) {
+          if (activityType === "multiple-choice" || activityType === "text") {
             questionText = item.question;
-          } else if (modelActivityType === "flashcard") {
+          } else if (activityType === "flashcards") {
             questionText = item.front;
           }
 
@@ -185,7 +151,7 @@ const createActivity = async (req, res) => {
           const item = modelItems[questionIndex];
           const questionId = insertedQuestions[questionIndex]._id;
 
-          if (modelActivityType === "multiple_choice") {
+          if (activityType === "multiple-choice") {
             for (let i = 0; i < item.answers.length; i++) {
               answerDocs.push({
                 answer: item.answers[i],
@@ -193,7 +159,7 @@ const createActivity = async (req, res) => {
                 question_id: questionId,
               });
             }
-          } else if (modelActivityType === "flashcard") {
+          } else if (activityType === "flashcards") {
             answerDocs.push({
               answer: item.back,
               is_correct: true,
@@ -221,7 +187,7 @@ const createActivity = async (req, res) => {
     const newMessage = {
       ...newMessageBase,
       activity_id: createdActivity?._id,
-      activity_type: dbActivityType,
+      activity_type: activityType,
       activity_title: activityTitle,
     };
     // if (io && newMessage) {
@@ -930,20 +896,11 @@ const regenerateActivity = async (req, res) => {
     const activityMessage = await Message.findById(activity.message_id).lean();
     const description = activityMessage.content;
 
-    // map activity type
-    const modelRequestedType = mapRequestTypeToModel(activity.type);
-    if (!modelRequestedType) {
-      return res.status(400).json({
-        status: false,
-        message: "Unsupported activity type",
-      });
-    }
-
     // generate new activity with old question attached
     const generationResult = await generateActivityData({
       lessonId: activity.lesson_id,
       userId,
-      activityType: modelRequestedType,
+      activityType: activity.type,
       questionCount: activity.question_count,
       title: activity.title,
       description,
@@ -957,7 +914,7 @@ const regenerateActivity = async (req, res) => {
       });
     }
 
-    const modelActivityType = generationResult.activityType;
+    const activityType = generationResult.activityType;
 
     if (!generationResult.items.length) {
       return res.status(400).json({
@@ -1001,12 +958,9 @@ const regenerateActivity = async (req, res) => {
           const item = generationResult.items[i];
           let questionText = "";
 
-          if (
-            modelActivityType === "multiple_choice" ||
-            modelActivityType === "text"
-          ) {
+          if (activityType === "multiple-choice" || activityType === "text") {
             questionText = String(item.question || "").trim();
-          } else if (modelActivityType === "flashcard") {
+          } else if (activityType === "flashcards") {
             questionText = String(item.front || "").trim();
           }
           //update question text
@@ -1026,7 +980,7 @@ const regenerateActivity = async (req, res) => {
         for (let index = 0; index < generationResult.items.length; index++) {
           const item = generationResult.items[index];
           const questionId = existingQuestions[index]._id;
-          if (modelActivityType === "multiple_choice") {
+          if (activityType === "multiple-choice") {
             // create each new answer option linked to the question
             for (let i = 0; i < item.answers.length; i++) {
               answerDocs.push({
@@ -1035,7 +989,7 @@ const regenerateActivity = async (req, res) => {
                 question_id: questionId,
               });
             }
-          } else if (modelActivityType === "flashcard") {
+          } else if (activityType === "flashcards") {
             // create back side linked to the front side
 
             answerDocs.push({

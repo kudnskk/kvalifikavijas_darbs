@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, createContext, useContext } from "react";
 import {
   Box,
   VStack,
@@ -47,6 +47,17 @@ const ICONS = [
 const findTheIcon = (iconName) => {
   const iconObj = ICONS.find((icon) => icon.name === iconName);
   return iconObj ? iconObj.component : FaBook;
+};
+
+// Create Context for layout refresh
+const LayoutRefreshContext = createContext(null);
+
+export const useLayoutRefresh = () => {
+  const context = useContext(LayoutRefreshContext);
+  if (!context) {
+    return { refreshLayout: () => {} };
+  }
+  return context;
 };
 
 const MainLayout = ({ children }) => {
@@ -170,6 +181,7 @@ const MainLayout = ({ children }) => {
         });
         handleCloseDeleteLessonModal();
         getDataForDisplay();
+        navigate("/dashboard");
       } else {
         toast({
           title: "Error",
@@ -212,6 +224,7 @@ const MainLayout = ({ children }) => {
         });
         handleCloseDeleteCategoryModal();
         getDataForDisplay();
+        navigate("/dashboard");
       } else {
         toast({
           title: "Error",
@@ -278,6 +291,7 @@ const MainLayout = ({ children }) => {
     : lessons;
 
   return (
+    <LayoutRefreshContext.Provider value={{ refreshLayout: getDataForDisplay }}>
     <Box bgColor="#0F172A" minH="100vh">
       <Box
         position="fixed"
@@ -631,6 +645,7 @@ const MainLayout = ({ children }) => {
         isLoading={isLoading}
       />
     </Box>
+    </LayoutRefreshContext.Provider>
   );
 };
 

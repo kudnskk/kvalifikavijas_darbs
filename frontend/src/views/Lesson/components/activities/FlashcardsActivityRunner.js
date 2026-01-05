@@ -20,13 +20,12 @@ const Flashcard = ({ frontText, backText, cardId }) => {
       border="1px solid"
       borderRadius="md"
       boxShadow="sm"
-      p={4}
+      p={6}
       onClick={() => setFlipped((v) => !v)}
       cursor="pointer"
       userSelect="none"
-      w="100%"
-      maxW="360px"
-      minH="180px"
+      w="600px"
+      h="400px"
       position="relative"
       transition="all 0.2s ease-in-out"
       _hover={{
@@ -46,8 +45,16 @@ const Flashcard = ({ frontText, backText, cardId }) => {
         {flipped ? "Answer" : "Question"}
       </Text>
 
-      <Flex alignItems="center" justifyContent="center" minH="180px">
-        <Text color="white" whiteSpace="pre-wrap" textAlign="center" w="100%">
+      <Flex alignItems="center" justifyContent="center" h="100%">
+        <Text
+          color="white"
+          whiteSpace="pre-wrap"
+          textAlign="center"
+          w="100%"
+          overflow="auto"
+          maxH="100%"
+          px={4}
+        >
           {flipped ? backText : frontText}
         </Text>
       </Flex>

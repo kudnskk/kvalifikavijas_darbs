@@ -28,7 +28,7 @@ import {
 } from "@chakra-ui/react";
 import { useNavigate } from "react-router-dom";
 import { userApi } from "../api";
-
+import AcceptModal from "../components/AcceptModal";
 const AdminPanel = () => {
   const toast = useToast();
   const navigate = useNavigate();
@@ -301,34 +301,14 @@ const AdminPanel = () => {
           </CardBody>
         </Card>
       </Container>
-
-      <AlertDialog
+      <AcceptModal
         isOpen={isOpen}
-        leastDestructiveRef={cancelRef}
         onClose={onClose}
-        isCentered
-      >
-        <AlertDialogOverlay>
-          <AlertDialogContent bg="#0B1220" color="white" borderColor="#334155">
-            <AlertDialogHeader fontSize="lg" fontWeight="bold">
-              Confirm Delete User
-            </AlertDialogHeader>
-
-            <AlertDialogBody>
-              Are you sure you want to permanently delete this account?
-            </AlertDialogBody>
-
-            <AlertDialogFooter>
-              <Button ref={cancelRef} onClick={onClose} variant="outline">
-                Cancel
-              </Button>
-              <Button colorScheme="red" onClick={handleConfirmDelete} ml={3}>
-                Delete
-              </Button>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialogOverlay>
-      </AlertDialog>
+        title="Delete User"
+        description="Are you sure you want to permanently delete this user? All related data will be deleted."
+        handleAction={handleConfirmDelete}
+        confirmText="DELETE"
+      />
     </Box>
   );
 };

@@ -89,7 +89,7 @@ const getInstructionsForGeneratingActivity = (
           )}\n\nGenerate entirely different questions on the same topic.`
       : "";
 
-  if (type === "multiple_choice") {
+  if (type === "multiple-choice") {
     return `Your task is to generate an educational multiple choice quiz. Only ask questions about the topic.
   -title: ${lessonTitle}
 - itemCount: ${questionCount}
@@ -109,7 +109,7 @@ const getInstructionsForGeneratingActivity = (
     You MUST return JSON strictly matching the provided schema.
     In items array there are objects with question string and referenceAnswer string. 
     referenceAnswer is a sample answer to the question.${regenerationNote}`;
-  } else if (type === "flashcard") {
+  } else if (type === "flashcards") {
     return `Your task is to generate educational flashcards. Only ask questions about the topic.
     -title: ${lessonTitle}
   - itemCount: ${questionCount}
@@ -263,7 +263,7 @@ const gradeFreeTextAnswers = async ({ lessonId, items }) => {
   if (!safeItems.length) {
     return {
       status: "error",
-      error: { message: "No free-text answers provided" },
+      error: { message: "No answers provided" },
       results: null,
     };
   }
@@ -568,9 +568,9 @@ const generateActivityData = async ({
   //for text get question schema
   //for flashcard get front and back schema
   const schemaByType = {
-    multiple_choice: multipleChoiceGenerationSchema,
+    "multiple-choice": multipleChoiceGenerationSchema,
     text: textGenerationSchema,
-    flashcard: flashcardGenerationSchema,
+    flashcards: flashcardGenerationSchema,
   };
 
   const schema = schemaByType[String(activityType || "")];

@@ -75,15 +75,15 @@ const NewLessonModal = ({
         setTitle("");
         setCategoryId("");
 
-        // Call callback to refresh data
-        if (onLessonCreated) {
-          onLessonCreated();
-        }
-
         onClose();
 
-        // Redirect only after creating a new lesson
-        if (!lesson?._id && newLessonId) {
+        // Call callback to refresh data
+        if (onLessonCreated) {
+          await onLessonCreated();
+        }
+
+        // Redirect only after creating a new lesson, and only if no callback (not from dashboard)
+        if (!lesson?._id && newLessonId && !onLessonCreated) {
           navigate(`/lesson/${newLessonId}`);
         }
       } else {

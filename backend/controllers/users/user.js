@@ -128,8 +128,7 @@ const deleteMe = async (req, res) => {
     if (!passwordMatch) {
       return res.status(401).json({
         status: false,
-        message:
-          "The entered password is incorrect.(Ievadītā parole nav pareiza.)",
+        message: "The entered password is incorrect.",
       });
     }
 
@@ -225,8 +224,7 @@ const adminDeleteUser = async (req, res) => {
     if (String(adminId) === String(userId)) {
       return res.status(400).json({
         status: false,
-        message:
-          "Are you sure you want to permanently delete your account? (Vai jūs tiešām gribāt neatgriezeniski dzēst savu kontu?)",
+        message: "Cant delete own account",
       });
     }
 
@@ -234,7 +232,7 @@ const adminDeleteUser = async (req, res) => {
     if (!user) {
       return res.status(404).json({
         status: false,
-        message: "User does not exist! (Lietotājs neeksistē!)",
+        message: "User does not exist!)",
       });
     }
 
@@ -242,7 +240,7 @@ const adminDeleteUser = async (req, res) => {
 
     return res.status(200).json({
       status: true,
-      message: "User deleted successfully! (Lietotājs izdzēsts veiksmīgi!)",
+      message: "User deleted successfully!",
     });
   } catch (error) {
     return res.status(500).json({
