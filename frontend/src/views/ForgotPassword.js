@@ -27,11 +27,11 @@ const Login = () => {
   const [userId, setUserId] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isTokenSent, setIsTokenSent] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isTokenCorrect, setIsTokenCorrect] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [tokenInput, setTokenInput] = useState("");
 
   const navigate = useNavigate();
   const toast = useToast();
@@ -46,8 +46,9 @@ const Login = () => {
     try {
       const response = await authApi.forgotPasswordRequest(email.trim());
       if (response.status) {
+        setIsTokenSent(true);
         toast({
-          title: "Token sent",
+          title: "Token sent successfully!",
           description: response.message,
           status: "success",
           duration: 2000,
@@ -125,6 +126,13 @@ const Login = () => {
       setErrorMessage("The passwords do not match!");
       return;
     }
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/;
+    if (!passwordRegex.test(password)) {
+      setErrorMessage(
+        "The password must contain at least one uppercase letter, one lowercase letter, and one digit!"
+      );
+      return;
+    }
     setIsLoading(true);
     setErrorMessage("");
     try {
@@ -165,8 +173,6 @@ const Login = () => {
     }
   };
 
-  const [tokenInput, setTokenInput] = useState("");
-
   return (
     <Container maxW="md" py={16}>
       <Box bg="white" p={8} borderRadius="lg" boxShadow="lg">
@@ -179,7 +185,7 @@ const Login = () => {
           </Box>
 
           <VStack spacing={4}>
-            {!isTokenCorrect ? (
+            {!isTokenSent && !isTokenCorrect && (
               <>
                 <FormControl isRequired>
                   <FormLabel>Email</FormLabel>
@@ -193,18 +199,6 @@ const Login = () => {
                     Please enter email of your registered user account
                   </FormHelperText>
                 </FormControl>
-                <FormControl isRequired mt={2}>
-                  <FormLabel>Token</FormLabel>
-                  <Input
-                    type="text"
-                    placeholder="Enter the code sent to your email"
-                    value={tokenInput}
-                    onChange={(e) => setTokenInput(e.target.value)}
-                  />
-                  <FormHelperText>
-                    Enter the 6-digit code sent to your email
-                  </FormHelperText>
-                </FormControl>
                 <Button
                   colorScheme="blue"
                   width="full"
@@ -215,76 +209,80 @@ const Login = () => {
                 >
                   Send Token
                 </Button>
-                <Button
-                  colorScheme="green"
-                  width="full"
-                  size="lg"
-                  onClick={compareToken}
-                  isLoading={isLoading}
-                  mt={2}
-                >
-                  Verify Token
-                </Button>
-              </>
-            ) : (
-              <>
-                <FormControl isRequired>
-                  <FormLabel>Password</FormLabel>
-                  <InputGroup>
-                    <Input
-                      name="password"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Create a password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                    />
-                    <InputRightElement>
-                      <IconButton
-                        variant="ghost"
-                        icon={showPassword ? <LuEyeClosed /> : <LuEye />}
-                        onClick={() => setShowPassword(!showPassword)}
-                      />
-                    </InputRightElement>
-                  </InputGroup>
-                  <FormHelperText>
-                    Must be between 5-20 characters, contain at least one
-                    number, upper and lower case letter.
-                  </FormHelperText>
-                </FormControl>
-
-                <FormControl isRequired>
-                  <FormLabel>Confirm Password</FormLabel>
-                  <InputGroup>
-                    <Input
-                      name="confirmPassword"
-                      type={showConfirmPassword ? "text" : "password"}
-                      placeholder="Confirm your password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                    />
-                    <InputRightElement>
-                      <IconButton
-                        variant="ghost"
-                        icon={showConfirmPassword ? <LuEyeClosed /> : <LuEye />}
-                        onClick={() =>
-                          setShowConfirmPassword(!showConfirmPassword)
-                        }
-                      />
-                    </InputRightElement>
-                  </InputGroup>
-                </FormControl>
-                <Button
-                  colorScheme="blue"
-                  width="full"
-                  size="lg"
-                  onClick={createNewPassword}
-                  isLoading={isLoading}
-                  mt={2}
-                >
-                  Create New Password
-                </Button>
               </>
             )}
+            {isTokenSent &&
+              (!isTokenCorrect ? (
+                <>
+                  <FormControl isRequired mt={2}>
+                    <FormLabel>Token</FormLabel>
+                    <Input
+                      type="text"
+                      placeholder="Enter the code sent to your email"
+                      maxLength={4}
+                      value={tokenInput}
+                      onChange={(e) => setTokenInput(e.target.value)}
+                    />
+                    <FormHelperText>
+                      Enter the 4-digit code sent to your email. Code is valid
+                      for 15 minutes.
+                    </FormHelperText>
+                  </FormControl>
+
+                  <Button
+                    colorScheme="blue"
+                    width="full"
+                    size="lg"
+                    onClick={compareToken}
+                    isLoading={isLoading}
+                    mt={2}
+                  >
+                    Verify Token
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <FormControl isRequired>
+                    <FormLabel>Password</FormLabel>
+                    <InputGroup>
+                      <Input
+                        name="password"
+                        type={"password"}
+                        placeholder="Create a password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                      />
+                    </InputGroup>
+                    <FormHelperText>
+                      Must be between 5-20 characters, contain at least one
+                      number, upper and lower case letter.
+                    </FormHelperText>
+                  </FormControl>
+
+                  <FormControl isRequired>
+                    <FormLabel>Confirm Password</FormLabel>
+                    <InputGroup>
+                      <Input
+                        name="confirmPassword"
+                        type={"password"}
+                        placeholder="Confirm your password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                      />
+                    </InputGroup>
+                  </FormControl>
+                  <Button
+                    colorScheme="blue"
+                    width="full"
+                    size="lg"
+                    onClick={createNewPassword}
+                    isLoading={isLoading}
+                    mt={2}
+                  >
+                    Create New Password
+                  </Button>
+                </>
+              ))}
 
             {errorMessage && <Text color="red.500">{errorMessage}</Text>}
           </VStack>

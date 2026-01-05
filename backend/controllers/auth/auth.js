@@ -68,7 +68,7 @@ exports.register = async (req, res) => {
     if (!email || !password || !user_name) {
       return res.status(400).json({
         status: false,
-        message: "Username, email and password are required",
+        message: "Not all required input fields are filled in!",
       });
     }
 
@@ -95,7 +95,7 @@ exports.register = async (req, res) => {
       user_name: user_name,
     });
 
-    const emailVerifyToken = Math.floor(Math.random() * 10000);
+    const emailVerifyToken = Math.floor(1000 + Math.random() * 9000);
     newUser.is_email_verified = false;
     newUser.email_verify_token = emailVerifyToken;
     const msg = {
@@ -158,14 +158,17 @@ exports.verifyEmailCode = async (req, res) => {
   try {
     const { code } = req.body;
     if (!code) {
-      return res
-        .status(400)
-        .json({ status: false, message: "Invalid verification code" });
+      return res.status(400).json({
+        status: false,
+        message: "Not all required input fields are filled in!",
+      });
     }
     const userId = res.locals.user.id;
     const user = await User.findById(userId);
     if (!user)
-      return res.status(404).json({ status: false, message: "User not found" });
+      return res
+        .status(404)
+        .json({ status: false, message: "User does not exist!" });
     if (user.is_email_verified) {
       return res
         .status(400)
@@ -193,13 +196,17 @@ exports.forgotPasswordRequest = async (req, res) => {
   try {
     const { email } = req.body;
     if (!email)
-      return res
-        .status(400)
-        .json({ status: false, message: "Email is required" });
+      return res.status(400).json({
+        status: false,
+        message: "Not all required input fields are filled in!",
+      });
     const user = await User.findOne({ email });
     if (!user)
-      return res.status(404).json({ status: false, message: "User not found" });
-    const resetToken = Math.floor(100000 + Math.random() * 900000); // 6-digit code
+      return res
+        .status(404)
+        .json({ status: false, message: "User does not exist!" });
+
+    const resetToken = Math.floor(1000 + Math.random() * 9000);
     user.password_reset_token = resetToken;
     user.password_reset_expires = Date.now() + 1000 * 60 * 15; // 15 min
     const result = await sendEmail({
@@ -231,26 +238,33 @@ exports.comparePasswordToken = async (req, res) => {
   try {
     const { email, code } = req.body;
     if (!email || !code)
-      return res
-        .status(400)
-        .json({ status: false, message: "Email and code required" });
+      return res.status(400).json({
+        status: false,
+        message: "Not all required input fields are filled in!",
+      });
     const user = await User.findOne({ email });
     if (!user)
-      return res.status(404).json({ status: false, message: "User not found" });
+      return res
+        .status(404)
+        .json({ status: false, message: "User does not exist!" });
     if (!user.password_reset_token || !user.password_reset_expires) {
       return res
         .status(400)
         .json({ status: false, message: "No reset token found" });
     }
     if (Date.now() > user.password_reset_expires) {
-      return res
-        .status(400)
-        .json({ status: false, message: "Reset token expired" });
+      return res.status(400).json({
+        status: false,
+        message:
+          "The verification code is incorrect or has expired. Please try again!",
+      });
     }
     if (String(user.password_reset_token) !== String(code)) {
-      return res
-        .status(400)
-        .json({ status: false, message: "Invalid reset code" });
+      return res.status(400).json({
+        status: false,
+        message:
+          "The verification code is incorrect or has expired. Please try again!",
+      });
     }
     return res.status(200).json({ status: true, userId: user._id });
   } catch (error) {
@@ -264,12 +278,15 @@ exports.resetPassword = async (req, res) => {
   try {
     const { userId, password } = req.body;
     if (!userId || !password)
-      return res
-        .status(400)
-        .json({ status: false, message: "User ID and password required" });
+      return res.status(400).json({
+        status: false,
+        message: "Not all required input fields are filled in!",
+      });
     const user = await User.findById(userId);
     if (!user)
-      return res.status(404).json({ status: false, message: "User not found" });
+      return res
+        .status(404)
+        .json({ status: false, message: "User does not exist!" });
 
     user.password = await bcrypt.hash(password, 10);
     user.password_reset_token = undefined;
