@@ -155,7 +155,6 @@ const Chat = () => {
       };
 
       const onConnect = () => {
-        console.log("[socket] connected", socket.id);
         joinRoom();
       };
       const onConnectError = (err) =>
@@ -169,7 +168,6 @@ const Chat = () => {
       }
 
       const handleNewMessage = (newMessage) => {
-        console.log(newMessage);
         setIsWaitingForResponse(false);
         setMessages((prevMessages) => [...prevMessages, newMessage]);
       };
@@ -192,19 +190,20 @@ const Chat = () => {
     if (!id) return;
     if (!selectedLesson) return;
     if (!Array.isArray(messages)) return;
-    if (didInitialScrollRef.current) return;
 
     const raf = requestAnimationFrame(() => {
       messagesEndRef.current?.scrollIntoView({
-        behavior: "auto",
+        behavior: didInitialScrollRef.current ? "smooth" : "auto",
         block: "end",
       });
     });
 
-    didInitialScrollRef.current = true;
+    if (!didInitialScrollRef.current) {
+      didInitialScrollRef.current = true;
+    }
 
     return () => cancelAnimationFrame(raf);
-  }, [id, selectedLesson, messages?.length]);
+  }, [id, selectedLesson, messages]);
 
   // message typing logic
   const handleTyping = (e) => {
@@ -296,12 +295,18 @@ const Chat = () => {
         height="100%"
         overflow="hidden"
         pb={2}
+        px={{ base: 2, md: 0 }}
       >
         {selectedLesson ? (
           <>
             <Box p={2} borderBottom="1px solid" borderColor="#334155">
-              <Flex justify="space-between" align="center">
-                <Box>
+              <Flex
+                justify="space-between"
+                align="center"
+                flexWrap="wrap"
+                gap={2}
+              >
+                <Box flex="1" minW="0">
                   {" "}
                   <Text
                     fontSize="xs"
@@ -311,7 +316,11 @@ const Chat = () => {
                   >
                     Lesson
                   </Text>
-                  <Heading size="md" color="white" noOfLines={1}>
+                  <Heading
+                    size={{ base: "sm", md: "md" }}
+                    color="white"
+                    noOfLines={1}
+                  >
                     {selectedLesson}
                   </Heading>
                 </Box>
@@ -354,7 +363,7 @@ const Chat = () => {
               overflowY="auto"
               marginBottom={1}
               ref={scrollContainerRef}
-              px={4}
+              px={{ base: 2, md: 4 }}
             >
               {Array.isArray(messages) &&
                 messages.map((message, index) => {
@@ -396,7 +405,7 @@ const Chat = () => {
                           mb={2}
                         >
                           <Box
-                            maxW="70%"
+                            maxW={{ base: "85%", md: "70%" }}
                             display="flex"
                             flexDirection="column"
                             alignItems={
@@ -515,15 +524,27 @@ const Chat = () => {
                 </Text>
               )}
             </Flex>
-            <Flex align={"center"} ml={2}>
-              <ChatFileDropzone
-                onFilesSelected={(files) => {
-                  setAttachedFiles(files);
-                  setFile(files[0] ?? null);
-                }}
-                files={attachedFiles}
-              />
-
+            <Flex
+              align={"center"}
+              ml={2}
+              flexWrap={{ base: "wrap", md: "nowrap" }}
+              gap={2}
+            >
+              <Tooltip
+                label="Add /.pdf, /.txt, /.word files"
+                placement="top"
+                hasArrow
+              >
+                <Box>
+                  <ChatFileDropzone
+                    onFilesSelected={(files) => {
+                      setAttachedFiles(files);
+                      setFile(files[0] ?? null);
+                    }}
+                    files={attachedFiles}
+                  />
+                </Box>
+              </Tooltip>
               <Textarea
                 color="white"
                 placeholder="Type a message..."
@@ -535,6 +556,8 @@ const Chat = () => {
                     handleSendMessage();
                   }
                 }}
+                minH={{ base: "60px", md: "auto" }}
+                flex="1"
               />
 
               <Button
@@ -543,7 +566,8 @@ const Chat = () => {
                 cursor="pointer"
                 onClick={handleSendMessage}
                 transition="all 0.3s ease"
-                marginLeft={2}
+                size={{ base: "md", md: "md" }}
+                w={{ base: "100%", md: "auto" }}
               >
                 SEND
               </Button>

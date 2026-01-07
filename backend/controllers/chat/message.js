@@ -55,8 +55,6 @@ const getMessagesByLessonId = async (req, res) => {
       };
     });
 
-    console.log("Fetched messages:", messages);
-
     return res.status(200).json({
       status: true,
       message: "Messages fetched successfully",
@@ -159,7 +157,6 @@ const createMessage = async (req, res) => {
       .then((aiMessage) => {
         if (aiMessage) {
           io.to(lesson_id).emit("new_message", aiMessage);
-          console.log(`Emitted new_message to room ${lesson_id}`);
         }
       })
       .catch((error) => {

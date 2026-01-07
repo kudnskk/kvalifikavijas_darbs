@@ -71,7 +71,7 @@ const createActivity = async (req, res) => {
     if (!generationResult || generationResult.status !== "ok") {
       return res.status(400).json({
         status: false,
-        message: "OpenAI response failed!",
+        message: generationResult?.error || "OpenAI response failed!",
       });
     }
 
@@ -173,12 +173,6 @@ const createActivity = async (req, res) => {
     } finally {
       await session.endSession();
     }
-
-    console.log("[createActivity] transaction committed", {
-      ms: Date.now() - t0,
-      messageId: createdMessage?._id ? String(createdMessage._id) : null,
-      activityId: createdActivity?._id ? String(createdActivity._id) : null,
-    });
 
     const newMessageBase = createdMessage?.toObject
       ? createdMessage.toObject()
@@ -743,7 +737,6 @@ const explainActivityAttemptMistakes = async (req, res) => {
         message: explained?.error?.message || "Failed to explain mistakes",
       });
     }
-    console.log("explained", explained);
 
     return res.status(200).json({
       status: true,

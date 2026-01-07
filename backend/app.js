@@ -58,7 +58,6 @@ app.use(compression());
 
 // import routes
 const auth = require("./routers/auth/auth");
-const fileRouter = require("./routers/files/fileRouter");
 const categoryRouter = require("./routers/chat/categoryRouter");
 const lessonRouter = require("./routers/chat/lessonRouter");
 const messageRouter = require("./routers/chat/messageRouter");
@@ -79,7 +78,6 @@ mongoose
 
 // use routes
 app.use("/api/auth", auth);
-app.use("/api/files", fileRouter);
 app.use("/api/categories", categoryRouter);
 app.use("/api/lessons", lessonRouter);
 app.use("/api/messages", messageRouter);
