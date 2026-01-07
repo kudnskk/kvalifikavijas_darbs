@@ -124,4 +124,6 @@ app.use((error, req, res, next) => {
 
 // server listening
 const port = process.env.PORT || 5100;
-server.listen(port, () => console.log(`Server is listening on port : ${port}`));
+server.listen(port, "0.0.0.0", () =>
+  console.log(`Server is listening on port : ${port}`),
+);
