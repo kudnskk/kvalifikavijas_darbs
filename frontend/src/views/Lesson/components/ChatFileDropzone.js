@@ -39,7 +39,7 @@ const ChatFileDropzone = ({ onFilesSelected, files }) => {
       <input
         ref={fileInputRef}
         type="file"
-        accept=".pdf,.txt,.doc,.docx"
+        accept=".pdf,.txt,.docx"
         onChange={handleFileChange}
         style={{ display: "none" }}
       />

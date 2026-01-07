@@ -133,16 +133,22 @@ const Dashboard = () => {
     <Box color="white">
       <Container maxW="container.xl" py={8}>
         {/* Header with Actions */}
-        <Flex justify="space-between" align="center" mb={8}>
+        <Flex
+          justify={{ base: "", md: "space-between" }}
+          align="center"
+          mb={8}
+          direction={{ base: "column", md: "row" }}
+        >
           <Box>
             <Heading size="lg">Dashboard</Heading>
             <Text color="gray.400">
               Welcome back! Here's your learning overview
             </Text>
           </Box>
-          <HStack spacing={4}>
+          <HStack spacing={4} mt={{ base: 2, md: "" }}>
             <Button
               variant="outline"
+              size={{ base: "sm", md: "md" }}
               colorScheme="red"
               onClick={handleCreateLesson}
               _hover={{
@@ -156,6 +162,7 @@ const Dashboard = () => {
 
             <Button
               variant="outline"
+              size={{ base: "sm", md: "md" }}
               colorScheme="blue"
               onClick={handleCreateCategory}
               _hover={{

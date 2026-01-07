@@ -18,7 +18,7 @@ const fileFilter = (req, file, cb) => {
   cb(new multer.MulterError("LIMIT_UNEXPECTED_FILE", file.fieldname), false);
 };
 
-const maxBytes = Number(process.env.CHAT_FILE_MAX_BYTES) || 512 * 1024; //512kb
+const maxBytes = Number(process.env.CHAT_FILE_MAX_BYTES) || 5 * 1024 * 1024;
 
 const upload = multer({
   storage,

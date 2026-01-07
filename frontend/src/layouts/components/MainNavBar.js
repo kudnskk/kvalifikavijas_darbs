@@ -26,18 +26,35 @@ const MainNavBar = () => {
       h="60px"
       bg="#081229"
       px={8}
-      py={4}
+      py={{ base: 1, md: 4 }}
       borderBottom="1px solid"
       borderColor="#334155"
       boxShadow="md"
     >
-      <Flex align="center">
+      <Flex align="center" direction={{ base: "column", md: "row" }}>
         <Box onClick={() => navigate("/dashboard")} cursor="pointer">
           <ShinyText text="AI Learning Assistant" speed={3} />
         </Box>
         <Spacer />
+        <Flex align="center" gap={3}>
+          {isAdmin ? (
+            <Text
+              cursor="pointer"
+              _hover={{
+                transform: "scale(1.03)",
+                color: "red.500",
+                textDecoration: "underline",
+                transition: "all 0.2s ease-in-out",
+              }}
+              color="white"
+              mr={3}
+              size="lg"
+              onClick={() => navigate("/admin")}
+            >
+              Admin
+            </Text>
+          ) : null}
 
-        {isAdmin ? (
           <Text
             cursor="pointer"
             _hover={{
@@ -49,40 +66,24 @@ const MainNavBar = () => {
             color="white"
             mr={3}
             size="lg"
-            onClick={() => navigate("/admin")}
+            onClick={() => navigate("/profile")}
           >
-            Admin
+            Profile
           </Text>
-        ) : null}
-
-        <Text
-          cursor="pointer"
-          _hover={{
-            transform: "scale(1.03)",
-            color: "red.500",
-            textDecoration: "underline",
-            transition: "all 0.2s ease-in-out",
-          }}
-          color="white"
-          mr={3}
-          size="lg"
-          onClick={() => navigate("/profile")}
-        >
-          Profile
-        </Text>
-        <Text
-          cursor="pointer"
-          _hover={{
-            transform: "scale(1.03)",
-            color: "red.500",
-            textDecoration: "underline",
-            transition: "all 0.2s ease-in-out",
-          }}
-          color="white"
-          onClick={() => authApi.logout()}
-        >
-          Logout
-        </Text>
+          <Text
+            cursor="pointer"
+            _hover={{
+              transform: "scale(1.03)",
+              color: "red.500",
+              textDecoration: "underline",
+              transition: "all 0.2s ease-in-out",
+            }}
+            color="white"
+            onClick={() => authApi.logout()}
+          >
+            Logout
+          </Text>
+        </Flex>
       </Flex>
     </Box>
   );

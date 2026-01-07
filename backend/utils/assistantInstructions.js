@@ -94,6 +94,12 @@ const getInstructionsForGeneratingActivity = (
   -title: ${lessonTitle}
 - itemCount: ${questionCount}
 - user description/instructions: ${description || "(none provided)"}
+
+VALIDATION RULES - You MUST check these BEFORE generating:
+- If the title and description are too vague or unclear to understand what topic to create questions about, return status: "error" with message explaining what information is missing
+2. If the request asks for anything unethical or not educational return status: "error" with message "Cannot create activities for unethical or inappropriate content"
+4. Only return status: "ok" if the request is clear, ethical, and educational
+
 -Avoid asking long or complex questions.
   You MUST return JSON strictly matching the provided schema.
   In items array there are objects with question, answers array and correctAnswerIndices array.
@@ -104,6 +110,11 @@ const getInstructionsForGeneratingActivity = (
     -title: ${lessonTitle}
   - itemCount: ${questionCount}
   - user description/instructions: ${description || "(none provided)"}
+  
+VALIDATION RULES - You MUST check these BEFORE generating:
+1. If the title and description are too vague or unclear to understand what topic to create questions about, return status: "error" with message explaining what information is missing
+2. If the request asks for anything unethical, inappropriate, harmful, or not educational (e.g., cheating, hacking, illegal activities, violence, hate speech), return status: "error" with message "Cannot create activities for unethical or inappropriate content"
+4. Only return status: "ok" if the request is clear, ethical, and educational
 -Avoid asking long or complex questions.
    
     You MUST return JSON strictly matching the provided schema.
@@ -115,7 +126,11 @@ const getInstructionsForGeneratingActivity = (
   - itemCount: ${questionCount}
   - user description/instructions: ${description || "(none provided)"}
 -Avoid asking long or complex questions.
-   
+  
+VALIDATION RULES - You MUST check these BEFORE generating:
+1. If the title and description are too vague or unclear to understand what topic to create questions about, return status: "error" with message explaining what information is missing
+2. If the request asks for anything unethical, inappropriate, harmful, or not educational (e.g., cheating, hacking, illegal activities, violence, hate speech), return status: "error" with message "Cannot create activities for unethical or inappropriate content"
+4. Only return status: "ok" if the request is clear, ethical, and educational
     You MUST return JSON strictly matching the provided schema.
     In items array there are objects wit front and back strings. 
     Front is a term or a question on the front of the flashcard, back is a short definition or an answer on the back of the flashcard.${regenerationNote}`;
@@ -130,8 +145,17 @@ const multipleChoiceGenerationSchema = {
   type: "object",
   additionalProperties: false,
   properties: {
+    status: { type: "string", enum: ["ok", "error"] },
+    error: {
+      type: ["object", "null"],
+      additionalProperties: false,
+      properties: {
+        message: { type: "string" },
+      },
+      required: ["message"],
+    },
     items: {
-      type: "array",
+      type: ["array", "null"],
       items: {
         type: "object",
         additionalProperties: false,
@@ -147,15 +171,24 @@ const multipleChoiceGenerationSchema = {
       },
     },
   },
-  required: ["items"],
+  required: ["status", "error", "items"],
 };
 //text: question, referenceAnswer
 const textGenerationSchema = {
   type: "object",
   additionalProperties: false,
   properties: {
+    status: { type: "string", enum: ["ok", "error"] },
+    error: {
+      type: ["object", "null"],
+      additionalProperties: false,
+      properties: {
+        message: { type: "string" },
+      },
+      required: ["message"],
+    },
     items: {
-      type: "array",
+      type: ["array", "null"],
       items: {
         type: "object",
         additionalProperties: false,
@@ -167,15 +200,24 @@ const textGenerationSchema = {
       },
     },
   },
-  required: ["items"],
+  required: ["status", "error", "items"],
 };
 //flashcard: front, back
 const flashcardGenerationSchema = {
   type: "object",
   additionalProperties: false,
   properties: {
+    status: { type: "string", enum: ["ok", "error"] },
+    error: {
+      type: ["object", "null"],
+      additionalProperties: false,
+      properties: {
+        message: { type: "string" },
+      },
+      required: ["message"],
+    },
     items: {
-      type: "array",
+      type: ["array", "null"],
       items: {
         type: "object",
         additionalProperties: false,
@@ -187,7 +229,7 @@ const flashcardGenerationSchema = {
       },
     },
   },
-  required: ["items"],
+  required: ["status", "error", "items"],
 };
 
 const freeTextGradingJsonSchema = {
@@ -534,7 +576,6 @@ const generateAIResponse = async (userMessage, lessonId, userId) => {
       $push: { messages: aiMessage._id },
     });
 
-    console.log("AI response saved successfully");
     return aiMessage;
   } catch (error) {
     console.error("Error generating AI response:", error.message);
@@ -624,6 +665,14 @@ const generateActivityData = async ({
     throw new Error("OpenAI response failed!");
   try {
     const out = JSON.parse(raw);
+    //check if the activity passed the validation rules, if not return an error
+
+    if (out.status === "error") {
+      return {
+        status: "error",
+        error: out?.error?.message || "OpenAI response failed!",
+      };
+    }
     const items = Array.isArray(out?.items) ? out.items : null;
     //make sure questions were generated and their number is correct
     if (!items)
