@@ -252,7 +252,7 @@ const getActivityById = async (req, res) => {
         message: "Activity not found",
       });
     }
-
+    //get message that is part of the activity
     const activityMessage = activity?.message_id
       ? await Message.findById(activity.message_id).lean()
       : null;
@@ -268,7 +268,7 @@ const getActivityById = async (req, res) => {
         message: "Lesson not found or does not belong to user",
       });
     }
-
+    // get activity data: quesitons + answers
     const questions = await ActivityQuestion.find({ activity_id: activityId })
       .sort({ createdAt: 1 })
       .lean();

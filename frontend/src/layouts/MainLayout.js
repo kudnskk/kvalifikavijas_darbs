@@ -1,4 +1,10 @@
-import React, { useState, useEffect, createContext, useContext } from "react";
+import React, {
+  useState,
+  useEffect,
+  createContext,
+  useContext,
+  useMemo,
+} from "react";
 import {
   Box,
   VStack,
@@ -65,6 +71,299 @@ export const useLayoutRefresh = () => {
   }
   return context;
 };
+// left panel separated
+const SidebarContent = ({
+  categorySearch,
+  setCategorySearch,
+  onNewCategoryModalOpen,
+  filteredCategories,
+  expandedCategories,
+  toggleCategory,
+  handleOpenLessonModal,
+  handleOpenEditCategoryModal,
+  handleOpenDeleteCategoryModal,
+  selectedLesson,
+  setSelectedLesson,
+  navigate,
+  onMobileMenuClose,
+  lessonSearch,
+  setLessonSearch,
+  filteredLessons,
+  handleOpenEditLesson,
+  handleOpenDeleteLessonModal,
+  findTheIcon,
+}) => (
+  <VStack spacing={6} py={6} px={2} align="stretch">
+    <Box>
+      <Heading size="md" color="white" mb={4}>
+        Categories
+      </Heading>
+      <VStack spacing={3} align="stretch">
+        <Input
+          placeholder="Search categories"
+          value={categorySearch}
+          onChange={(e) => setCategorySearch(e.target.value)}
+          bg="#0F172A"
+          border="1px solid"
+          borderColor="#334155"
+          color="white"
+        />
+        <Button
+          onClick={onNewCategoryModalOpen}
+          variant="outline"
+          colorScheme="blue"
+          _hover={{
+            transform: "scale(1.02)",
+            boxShadow: "md",
+          }}
+          transition="all 0.2s ease-in-out"
+          mb="1"
+        >
+          + Create New Category
+        </Button>
+        <Divider />
+        {filteredCategories.length === 0 ? (
+          <Text color="gray.300" fontSize="sm" px={2}>
+            No category found!
+          </Text>
+        ) : (
+          filteredCategories.map((category) => (
+            <Box key={category._id}>
+              <Flex
+                p={3}
+                borderRadius="md"
+                border="1px solid"
+                borderColor={category.color}
+                align="center"
+              >
+                <Flex align="center" gap={2} flex={1}>
+                  <Icon
+                    as={findTheIcon(category.icon)}
+                    boxSize={6}
+                    color={category.color}
+                  />
+                  <Box>
+                    <Text color="white" fontWeight="bold" fontSize="sm">
+                      {category.title}
+                    </Text>
+                    <Text color="gray.100" fontSize="xs">
+                      {category.lessonsCount} lessons
+                    </Text>
+                  </Box>
+                </Flex>
+
+                <Menu>
+                  <MenuButton
+                    as={IconButton}
+                    icon={<RxHamburgerMenu />}
+                    size="xs"
+                    variant="ghost"
+                    color="gray.100"
+                    _hover={{
+                      color: category.color,
+                      bg: "transparent",
+                    }}
+                    mr="2"
+                  />
+                  <MenuList bg="#0F172A" borderColor="#334155">
+                    <MenuItem
+                      bg="#0F172A"
+                      _hover={{ bg: "#334155" }}
+                      color="white"
+                      onClick={() => handleOpenLessonModal(category._id)}
+                    >
+                      Add new lesson
+                    </MenuItem>
+                    <MenuItem
+                      bg="#0F172A"
+                      _hover={{ bg: "#334155" }}
+                      color="white"
+                      onClick={() => handleOpenEditCategoryModal(category)}
+                    >
+                      Edit category
+                    </MenuItem>
+                    <MenuItem
+                      bg="#0F172A"
+                      _hover={{ bg: "#334155" }}
+                      color="red.500"
+                      onClick={() => handleOpenDeleteCategoryModal(category)}
+                    >
+                      Delete category
+                    </MenuItem>
+                  </MenuList>
+                </Menu>
+
+                <Icon
+                  as={
+                    expandedCategories[category._id]
+                      ? FaChevronDown
+                      : FaChevronRight
+                  }
+                  boxSize={3}
+                  color="gray.100"
+                  onClick={() => toggleCategory(category._id)}
+                  _hover={{ color: category.color }}
+                  cursor="pointer"
+                />
+              </Flex>
+              <Collapse in={expandedCategories[category._id]} animateOpacity>
+                <VStack spacing={2} align="stretch" mt={2} ml={2}>
+                  {category.lessons.map((lesson) => (
+                    <Flex
+                      key={lesson._id}
+                      p={2}
+                      pl={4}
+                      borderLeft="2px solid"
+                      borderLeftColor={category.color}
+                      borderRadius="md"
+                      cursor="pointer"
+                      _hover={{
+                        bg: "#334155",
+                        transition: "all 0.2s",
+                      }}
+                      bgColor={
+                        selectedLesson === lesson._id
+                          ? "#495974"
+                          : "transparent"
+                      }
+                      onClick={() => {
+                        setSelectedLesson(lesson._id);
+                        navigate(`/lesson/${lesson._id}`);
+                        onMobileMenuClose();
+                      }}
+                      justify="space-between"
+                      align="center"
+                    >
+                      <Text color="white" fontWeight="medium" fontSize="sm">
+                        {lesson.title}
+                      </Text>
+                      <Text color="gray.400" fontSize="xs">
+                        {lesson.status}
+                      </Text>
+                    </Flex>
+                  ))}
+                </VStack>
+              </Collapse>
+            </Box>
+          ))
+        )}
+      </VStack>
+    </Box>
+
+    <Box>
+      <Heading size="md" color="white" mb={4}>
+        Recent Lessons
+      </Heading>
+
+      <VStack spacing={3} align="stretch">
+        <Input
+          placeholder="Search lessons"
+          name="lesson"
+          value={lessonSearch}
+          onChange={(e) => setLessonSearch(e.target.value)}
+          bg="#0F172A"
+          border="1px solid"
+          borderColor="#334155"
+          color="white"
+        />
+        <Button
+          variant="outline"
+          colorScheme="red"
+          _hover={{
+            transform: "scale(1.02)",
+            boxShadow: "md",
+          }}
+          onClick={() => handleOpenLessonModal()}
+          transition="all 0.2s ease-in-out"
+          mb="1"
+        >
+          + Create New Lesson
+        </Button>
+        <Divider mb={3} />
+        {filteredLessons.length === 0 ? (
+          <Text color="gray.300" fontSize="sm" px={2}>
+            No lesson found!
+          </Text>
+        ) : (
+          filteredLessons.map((lesson) => (
+            <Box
+              key={lesson._id}
+              p={4}
+              bg="#334155"
+              borderLeft="2px solid"
+              borderLeftColor={lesson?.category_id?.color || "gray"}
+              borderRadius="md"
+              cursor="pointer"
+              bgColor={
+                selectedLesson === lesson._id ? "#495974" : "transparent"
+              }
+              onClick={() => {
+                setSelectedLesson(lesson._id);
+                navigate(`/lesson/${lesson._id}`);
+                onMobileMenuClose();
+              }}
+              _hover={{
+                bg: "#495974",
+              }}
+            >
+              <Flex align="center" justify={"space-between"}>
+                <Text color="white" fontWeight="semibold" mb={1}>
+                  {lesson?.title}
+                </Text>
+
+                <Flex align="center" gap={2}>
+                  <Menu>
+                    <MenuButton
+                      as={IconButton}
+                      icon={<RxHamburgerMenu />}
+                      size="xs"
+                      variant="ghost"
+                      color="gray.100"
+                      _hover={{
+                        color: lesson?.category_id?.color || "#3B82F6",
+                        bg: "transparent",
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    <MenuList
+                      bg="#0F172A"
+                      borderColor="#334155"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <MenuItem
+                        bg="#0F172A"
+                        _hover={{ bg: "#334155" }}
+                        color="white"
+                        onClick={() => handleOpenEditLesson(lesson)}
+                      >
+                        Edit lesson
+                      </MenuItem>
+                      <MenuItem
+                        bg="#0F172A"
+                        _hover={{ bg: "#334155" }}
+                        color="red.500"
+                        onClick={() => handleOpenDeleteLessonModal(lesson)}
+                      >
+                        Delete lesson
+                      </MenuItem>
+                    </MenuList>
+                  </Menu>
+
+                  <Text color="gray.400" fontSize="xs">
+                    {lesson?.status}
+                  </Text>
+                </Flex>
+              </Flex>
+              <Text color="gray.100" fontSize="sm">
+                Category: {lesson?.category_id?.title || "-"}
+              </Text>
+            </Box>
+          ))
+        )}
+      </VStack>
+    </Box>
+  </VStack>
+);
 
 const MainLayout = ({ children }) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -286,295 +585,43 @@ const MainLayout = ({ children }) => {
     getDataForDisplay();
   }, []);
 
-  const filteredCategories = categorySearch.trim().toLowerCase()
-    ? categories.filter((category) =>
-        (category?.title || "")
-          .toLowerCase()
-          .includes(categorySearch.trim().toLowerCase())
-      )
-    : categories;
+  // const filteredCategories = categorySearch.trim().toLowerCase()
+  //   ? categories.filter((category) =>
+  //       (category?.title || "")
+  //         .toLowerCase()
+  //         .includes(categorySearch.trim().toLowerCase())
+  //     )
+  //   : categories;
 
-  const filteredLessons = lessonSearch.trim().toLowerCase()
-    ? lessons.filter((lesson) =>
-        (lesson?.title || "")
-          .toLowerCase()
-          .includes(lessonSearch.trim().toLowerCase())
-      )
-    : lessons;
+  // const filteredLessons = lessonSearch.trim().toLowerCase()
+  //   ? lessons.filter((lesson) =>
+  //       (lesson?.title || "")
+  //         .toLowerCase()
+  //         .includes(lessonSearch.trim().toLowerCase())
+  //     )
+  //   : lessons;
 
-  const SidebarContent = () => (
-    <VStack spacing={6} py={6} px={2} align="stretch">
-      <Box>
-        <Heading size="md" color="white" mb={4}>
-          Categories
-        </Heading>
-        <VStack spacing={3} align="stretch">
-          <Input
-            placeholder="Search categories"
-            value={categorySearch}
-            onChange={(e) => setCategorySearch(e.target.value)}
-            bg="#0F172A"
-            border="1px solid"
-            borderColor="#334155"
-            color="white"
-          />
-          <Button
-            onClick={onNewCategoryModalOpen}
-            variant="outline"
-            colorScheme="blue"
-            _hover={{
-              transform: "scale(1.02)",
-              boxShadow: "md",
-            }}
-            transition="all 0.2s ease-in-out"
-            mb="1"
-          >
-            + Create New Category
-          </Button>
-          <Divider />
-          {filteredCategories.length === 0 ? (
-            <Text color="gray.300" fontSize="sm" px={2}>
-              No category found!
-            </Text>
-          ) : (
-            filteredCategories.map((category) => (
-              <Box key={category._id}>
-                <Flex
-                  p={3}
-                  borderRadius="md"
-                  border="1px solid"
-                  borderColor={category.color}
-                  align="center"
-                >
-                  <Flex align="center" gap={2} flex={1}>
-                    <Icon
-                      as={findTheIcon(category.icon)}
-                      boxSize={6}
-                      color={category.color}
-                    />
-                    <Box>
-                      <Text color="white" fontWeight="bold" fontSize="sm">
-                        {category.title}
-                      </Text>
-                      <Text color="gray.100" fontSize="xs">
-                        {category.lessonsCount} lessons
-                      </Text>
-                    </Box>
-                  </Flex>
+  const filteredLessons = useMemo(() => {
+    const list = Array.isArray(lessons) ? lessons : [];
+    const q = lessonSearch.trim().toLowerCase();
+    if (!q) return list;
+    return list.filter((a) =>
+      String(a?.title || "")
+        .toLowerCase()
+        .includes(q)
+    );
+  }, [lessons, lessonSearch]);
 
-                  <Menu>
-                    <MenuButton
-                      as={IconButton}
-                      icon={<RxHamburgerMenu />}
-                      size="xs"
-                      variant="ghost"
-                      color="gray.100"
-                      _hover={{
-                        color: category.color,
-                        bg: "transparent",
-                      }}
-                      mr="2"
-                    />
-                    <MenuList bg="#0F172A" borderColor="#334155">
-                      <MenuItem
-                        bg="#0F172A"
-                        _hover={{ bg: "#334155" }}
-                        color="white"
-                        onClick={() => handleOpenLessonModal(category._id)}
-                      >
-                        Add new lesson
-                      </MenuItem>
-                      <MenuItem
-                        bg="#0F172A"
-                        _hover={{ bg: "#334155" }}
-                        color="white"
-                        onClick={() => handleOpenEditCategoryModal(category)}
-                      >
-                        Edit category
-                      </MenuItem>
-                      <MenuItem
-                        bg="#0F172A"
-                        _hover={{ bg: "#334155" }}
-                        color="red.500"
-                        onClick={() => handleOpenDeleteCategoryModal(category)}
-                      >
-                        Delete category
-                      </MenuItem>
-                    </MenuList>
-                  </Menu>
-
-                  <Icon
-                    as={
-                      expandedCategories[category._id]
-                        ? FaChevronDown
-                        : FaChevronRight
-                    }
-                    boxSize={3}
-                    color="gray.100"
-                    onClick={() => toggleCategory(category._id)}
-                    _hover={{ color: category.color }}
-                    cursor="pointer"
-                  />
-                </Flex>
-                <Collapse in={expandedCategories[category._id]} animateOpacity>
-                  <VStack spacing={2} align="stretch" mt={2} ml={2}>
-                    {category.lessons.map((lesson) => (
-                      <Flex
-                        key={lesson._id}
-                        p={2}
-                        pl={4}
-                        borderLeft="2px solid"
-                        borderLeftColor={category.color}
-                        borderRadius="md"
-                        cursor="pointer"
-                        _hover={{
-                          bg: "#334155",
-                          transition: "all 0.2s",
-                        }}
-                        bgColor={
-                          selectedLesson === lesson._id
-                            ? "#495974"
-                            : "transparent"
-                        }
-                        onClick={() => {
-                          setSelectedLesson(lesson._id);
-                          navigate(`/lesson/${lesson._id}`);
-                          onMobileMenuClose();
-                        }}
-                        justify="space-between"
-                        align="center"
-                      >
-                        <Text color="white" fontWeight="medium" fontSize="sm">
-                          {lesson.title}
-                        </Text>
-                        <Text color="gray.400" fontSize="xs">
-                          {lesson.status}
-                        </Text>
-                      </Flex>
-                    ))}
-                  </VStack>
-                </Collapse>
-              </Box>
-            ))
-          )}
-        </VStack>
-      </Box>
-
-      <Box>
-        <Heading size="md" color="white" mb={4}>
-          Recent Lessons
-        </Heading>
-
-        <VStack spacing={3} align="stretch">
-          <Input
-            autoComplete="off"
-            placeholder="Search lessons"
-            name="lesson"
-            value={lessonSearch}
-            onChange={(e) => setLessonSearch(e.target.value)}
-            bg="#0F172A"
-            border="1px solid"
-            borderColor="#334155"
-            color="white"
-          />
-          <Button
-            variant="outline"
-            colorScheme="red"
-            _hover={{
-              transform: "scale(1.02)",
-              boxShadow: "md",
-            }}
-            onClick={() => handleOpenLessonModal()}
-            transition="all 0.2s ease-in-out"
-            mb="1"
-          >
-            + Create New Lesson
-          </Button>
-          <Divider mb={3} />
-          {filteredLessons.length === 0 ? (
-            <Text color="gray.300" fontSize="sm" px={2}>
-              No lesson found!
-            </Text>
-          ) : (
-            filteredLessons.map((lesson) => (
-              <Box
-                key={lesson._id}
-                p={4}
-                bg="#334155"
-                borderLeft="2px solid"
-                borderLeftColor={lesson?.category_id?.color || "gray"}
-                borderRadius="md"
-                cursor="pointer"
-                bgColor={
-                  selectedLesson === lesson._id ? "#495974" : "transparent"
-                }
-                onClick={() => {
-                  setSelectedLesson(lesson._id);
-                  navigate(`/lesson/${lesson._id}`);
-                  onMobileMenuClose();
-                }}
-                _hover={{
-                  bg: "#495974",
-                }}
-              >
-                <Flex align="center" justify={"space-between"}>
-                  <Text color="white" fontWeight="semibold" mb={1}>
-                    {lesson?.title}
-                  </Text>
-
-                  <Flex align="center" gap={2}>
-                    <Menu>
-                      <MenuButton
-                        as={IconButton}
-                        icon={<RxHamburgerMenu />}
-                        size="xs"
-                        variant="ghost"
-                        color="gray.100"
-                        _hover={{
-                          color: lesson?.category_id?.color || "#3B82F6",
-                          bg: "transparent",
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                      <MenuList
-                        bg="#0F172A"
-                        borderColor="#334155"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <MenuItem
-                          bg="#0F172A"
-                          _hover={{ bg: "#334155" }}
-                          color="white"
-                          onClick={() => handleOpenEditLesson(lesson)}
-                        >
-                          Edit lesson
-                        </MenuItem>
-                        <MenuItem
-                          bg="#0F172A"
-                          _hover={{ bg: "#334155" }}
-                          color="red.500"
-                          onClick={() => handleOpenDeleteLessonModal(lesson)}
-                        >
-                          Delete lesson
-                        </MenuItem>
-                      </MenuList>
-                    </Menu>
-
-                    <Text color="gray.400" fontSize="xs">
-                      {lesson?.status}
-                    </Text>
-                  </Flex>
-                </Flex>
-                <Text color="gray.100" fontSize="sm">
-                  Category: {lesson?.category_id?.title || "-"}
-                </Text>
-              </Box>
-            ))
-          )}
-        </VStack>
-      </Box>
-    </VStack>
-  );
+  const filteredCategories = useMemo(() => {
+    const list = Array.isArray(categories) ? categories : [];
+    const q = categorySearch.trim().toLowerCase();
+    if (!q) return list;
+    return list.filter((a) =>
+      String(a?.title || "")
+        .toLowerCase()
+        .includes(q)
+    );
+  }, [categories, categorySearch]);
 
   return (
     <LayoutRefreshContext.Provider value={{ refreshLayout: getDataForDisplay }}>
@@ -592,7 +639,27 @@ const MainLayout = ({ children }) => {
           borderColor="#334155"
           overflowY="auto"
         >
-          <SidebarContent />
+          <SidebarContent
+            categorySearch={categorySearch}
+            setCategorySearch={setCategorySearch}
+            onNewCategoryModalOpen={onNewCategoryModalOpen}
+            filteredCategories={filteredCategories}
+            expandedCategories={expandedCategories}
+            toggleCategory={toggleCategory}
+            handleOpenLessonModal={handleOpenLessonModal}
+            handleOpenEditCategoryModal={handleOpenEditCategoryModal}
+            handleOpenDeleteCategoryModal={handleOpenDeleteCategoryModal}
+            selectedLesson={selectedLesson}
+            setSelectedLesson={setSelectedLesson}
+            navigate={navigate}
+            onMobileMenuClose={onMobileMenuClose}
+            lessonSearch={lessonSearch}
+            setLessonSearch={setLessonSearch}
+            filteredLessons={filteredLessons}
+            handleOpenEditLesson={handleOpenEditLesson}
+            handleOpenDeleteLessonModal={handleOpenDeleteLessonModal}
+            findTheIcon={findTheIcon}
+          />
         </Box>
 
         {/* Mobile Drawer */}
@@ -613,7 +680,27 @@ const MainLayout = ({ children }) => {
               Menu
             </DrawerHeader>
             <DrawerBody p={0} overflowY="auto">
-              <SidebarContent />
+              <SidebarContent
+                categorySearch={categorySearch}
+                setCategorySearch={setCategorySearch}
+                onNewCategoryModalOpen={onNewCategoryModalOpen}
+                filteredCategories={filteredCategories}
+                expandedCategories={expandedCategories}
+                toggleCategory={toggleCategory}
+                handleOpenLessonModal={handleOpenLessonModal}
+                handleOpenEditCategoryModal={handleOpenEditCategoryModal}
+                handleOpenDeleteCategoryModal={handleOpenDeleteCategoryModal}
+                selectedLesson={selectedLesson}
+                setSelectedLesson={setSelectedLesson}
+                navigate={navigate}
+                onMobileMenuClose={onMobileMenuClose}
+                lessonSearch={lessonSearch}
+                setLessonSearch={setLessonSearch}
+                filteredLessons={filteredLessons}
+                handleOpenEditLesson={handleOpenEditLesson}
+                handleOpenDeleteLessonModal={handleOpenDeleteLessonModal}
+                findTheIcon={findTheIcon}
+              />
             </DrawerBody>
           </DrawerContent>
         </Drawer>
