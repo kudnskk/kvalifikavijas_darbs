@@ -8,10 +8,8 @@ const client = new OpenAI({
   timeout: 45000,
 });
 
-const getInstructions = (lessonTitle, type) => {
-  const text =
-    type === "chat"
-      ? `
+const getInstructions = (lessonTitle) => {
+  const text = `
 Rules:
 -in each input by the user first the message that student has writen for you is displayed, after that there may be Attached file: <file_name> and the text content of the file
 -if the user refers to the file if means to the content provied after the file name
@@ -31,8 +29,16 @@ Boundaries:
 Response style:
 - Keep responses concise (2-3 sentences for simple questions)
 - Use examples when explaining concepts
-- Ask follow-up questions to ensure understanding`
-      : "";
+- Ask follow-up questions to ensure understanding
+
+If user asks what he can do in this app or what are your capabilities, answer:
+- Create new lessons and categories to group them
+- Create messages for learning assistant who will answer them in a lesson
+- Send files for their text content to be analysed for .pdf,.txt,.doc files
+- Create interactive activities of type multiple-choice, free-text and flashcards. To do that user needs to press right top menu in a created lesson and choose "Create Activity"
+- User can review their history of activity completions and request mistakes made in this completion to be analyzed and explained by the learning assistant by pressing "Explain Mistakes"
+`;
+
   return text;
 };
 
@@ -552,7 +558,7 @@ const generateAIResponse = async (userMessage, lessonId, userId) => {
 
     const response = await client.responses.create({
       model: "gpt-5-mini",
-      instructions: getInstructions(lesson.title, "chat"),
+      instructions: getInstructions(lesson.title),
       input: historyAsInput,
       max_output_tokens: 2048,
       reasoning: { effort: "low" },

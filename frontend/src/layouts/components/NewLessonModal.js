@@ -82,8 +82,7 @@ const NewLessonModal = ({
           await onLessonCreated();
         }
 
-        // Redirect only after creating a new lesson, and only if no callback (not from dashboard)
-        if (!lesson?._id && newLessonId && !onLessonCreated) {
+        if (newLessonId) {
           navigate(`/lesson/${newLessonId}`);
         }
       } else {
