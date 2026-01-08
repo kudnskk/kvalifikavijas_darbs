@@ -124,13 +124,11 @@ const createMessage = async (req, res) => {
         });
       }
 
-      if (extractedFileText.length > 50000) {
-        fileMeta = {
-          type: req.file.mimetype,
-          file_name: req.file.originalname,
-          content: extractedFileText.substring(0, 50000),
-        };
-      }
+      fileMeta = {
+        type: req.file.mimetype,
+        file_name: req.file.originalname,
+        content: extractedFileText.substring(0, 50000),
+      };
     }
 
     const newMessage = new Message({
